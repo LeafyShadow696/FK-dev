@@ -1,4 +1,5 @@
 import { Route, Switch } from "wouter"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { ScrollToTop } from "@/components/layout/ScrollToTop"
@@ -17,6 +18,7 @@ export default function App() {
     <>
       <JsonLd />
       <ScrollToTop />
+      <SpeedInsights />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:text-foreground"
