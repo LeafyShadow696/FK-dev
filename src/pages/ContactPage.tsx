@@ -17,6 +17,7 @@ export default function ContactPage() {
     <main className="pt-32">
       <Section className="!py-12 sm:!py-16">
         <SectionHeader
+          as="h1"
           eyebrow="Kontakt"
           title={
             <>

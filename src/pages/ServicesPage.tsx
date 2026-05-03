@@ -17,6 +17,7 @@ export default function ServicesPage() {
     <main className="pt-32">
       <Section className="!py-12 sm:!py-16">
         <SectionHeader
+          as="h1"
           eyebrow="Služby"
           title={
             <>
@@ -40,9 +41,9 @@ export default function ServicesPage() {
                 <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-card/60">
                   <Icon className="h-5 w-5 text-foreground" aria-hidden />
                 </div>
-                <h2 className="font-display text-xl font-semibold text-foreground">
+                <h3 className="font-display text-xl font-semibold text-foreground">
                   {service.title}
-                </h2>
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {service.description}
                 </p>

@@ -71,11 +71,10 @@ function NetworkNodes({ nodeCount = 60, spread = 6 }: NetworkProps) {
     return geom
   }, [positions])
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!groupRef.current) return
     groupRef.current.rotation.y += delta * 0.04
-    groupRef.current.rotation.x =
-      Math.sin(performance.now() * 0.00015) * 0.12
+    groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.15) * 0.12
   })
 
   return (
@@ -84,17 +83,17 @@ function NetworkNodes({ nodeCount = 60, spread = 6 }: NetworkProps) {
         <lineBasicMaterial
           color={new THREE.Color("#a78bfa")}
           transparent
-          opacity={0.18}
+          opacity={0.12}
           depthWrite={false}
         />
       </lineSegments>
       <points geometry={nodeGeometry}>
         <pointsMaterial
           color={new THREE.Color("#e879f9")}
-          size={0.045}
+          size={0.04}
           sizeAttenuation
           transparent
-          opacity={0.85}
+          opacity={0.55}
           depthWrite={false}
         />
       </points>

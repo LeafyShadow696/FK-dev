@@ -42,6 +42,7 @@ function setCanonical(href: string) {
 export function useSeo({ title, description, path }: SeoOptions) {
   useEffect(() => {
     const canonical = new URL(path, business.url).toString()
+    const ogImage = `${business.url}/opengraph.jpg`
     document.title = title
     setMetaByName("description", description)
     setMetaByProperty("og:title", title)
@@ -50,11 +51,13 @@ export function useSeo({ title, description, path }: SeoOptions) {
     setMetaByProperty("og:type", "website")
     setMetaByProperty("og:site_name", business.brandName)
     setMetaByProperty("og:locale", "cs_CZ")
-    setMetaByProperty("og:image", `${business.url}/opengraph.jpg`)
+    setMetaByProperty("og:image", ogImage)
+    setMetaByProperty("og:image:width", "1200")
+    setMetaByProperty("og:image:height", "630")
     setMetaByName("twitter:card", "summary_large_image")
     setMetaByName("twitter:title", title)
     setMetaByName("twitter:description", description)
-    setMetaByName("twitter:image", `${business.url}/opengraph.jpg`)
+    setMetaByName("twitter:image", ogImage)
     setCanonical(canonical)
   }, [title, description, path])
 }

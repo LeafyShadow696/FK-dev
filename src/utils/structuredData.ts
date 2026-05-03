@@ -4,6 +4,7 @@ export function buildProfessionalServiceJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
+    "@id": `${business.url}/#business`,
     name: business.fullName,
     legalName: business.legalName,
     url: business.url,
@@ -18,7 +19,10 @@ export function buildProfessionalServiceJsonLd() {
       addressLocality: business.address.city,
       addressCountry: business.address.countryCode,
     },
-    areaServed: "Czech Republic",
+    areaServed: {
+      "@type": "Country",
+      name: "Czech Republic",
+    },
     availableLanguage: business.languages,
   } as const
 }

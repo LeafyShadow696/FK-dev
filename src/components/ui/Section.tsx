@@ -22,6 +22,7 @@ interface SectionHeaderProps {
   description?: ReactNode
   align?: "start" | "center"
   className?: string
+  as?: "h1" | "h2"
 }
 
 export function SectionHeader({
@@ -30,6 +31,7 @@ export function SectionHeader({
   description,
   align = "start",
   className,
+  as: Heading = "h2",
 }: SectionHeaderProps) {
   return (
     <div
@@ -45,9 +47,9 @@ export function SectionHeader({
           {eyebrow}
         </span>
       )}
-      <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl md:text-5xl">
+      <Heading className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl md:text-5xl">
         {title}
-      </h2>
+      </Heading>
       {description && (
         <p className="text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
           {description}
