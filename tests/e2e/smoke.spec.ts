@@ -26,9 +26,23 @@ test.describe("production routes", () => {
 test("home page has primary contact actions", async ({ page }) => {
   await page.goto("/")
 
+  await expect(page.getByText("Typické situace")).toBeVisible()
+  await expect(page.getByText("Ruční práce bere čas")).toBeVisible()
+  await expect(page.getByText("Konzultace nebo audit")).toBeVisible()
+  await expect(page.getByText("Automatizace opakované agendy")).toBeVisible()
   await expect(page.getByRole("link", { name: "Napsat e-mail" }).first()).toBeVisible()
+  await expect(page.getByRole("link", { name: "Chci konzultaci" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Zavolat" }).first()).toBeVisible()
   await expect(page.locator("canvas")).toHaveCount(1)
+})
+
+test("services page explains fit, outputs, and examples", async ({ page }) => {
+  await page.goto("/sluzby")
+
+  await expect(page.getByText("Kdy se hodí").first()).toBeVisible()
+  await expect(page.getByText("Výstup").first()).toBeVisible()
+  await expect(page.getByText("Poptávkový web pro službu")).toBeVisible()
+  await expect(page.getByRole("link", { name: "Poslat zadání" })).toBeVisible()
 })
 
 test("mobile navigation opens", async ({ page }) => {
@@ -58,4 +72,53 @@ test("theme toggle persists the selected color mode", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("theme")))
     .toBe("light")
+})
+
+test("home page exposes production SEO metadata", async ({ page }) => {
+  await page.goto("/")
+
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://fkdev.xyz/",
+  )
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://fkdev.xyz/opengraph.jpg",
+  )
+  const jsonLd = await page
+    .locator('script[type="application/ld+json"]')
+    .evaluate((script) => script.textContent ?? "")
+  expect(jsonLd).toContain("ProfessionalService")
+  expect(jsonLd).toContain("https://schema.org")
+})
+
+test("web manifest uses installable png icons", async ({ page, request }) => {
+  await page.goto("/")
+
+  const manifestHref = await page
+    .locator('link[rel="manifest"]')
+    .getAttribute("href")
+  expect(manifestHref).toBe("/site.webmanifest")
+
+  const response = await request.get(manifestHref!)
+  expect(response.status()).toBe(200)
+  const manifest = (await response.json()) as {
+    icons: Array<{ src: string; sizes: string; type: string; purpose?: string }>
+  }
+
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        src: "/pwa-icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      }),
+      expect.objectContaining({
+        src: "/pwa-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      }),
+    ]),
+  )
 })

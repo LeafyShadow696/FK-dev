@@ -1,8 +1,10 @@
-import { Mail } from "lucide-react"
+import { ArrowRight, Mail } from "lucide-react"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
 import { CollaborationProcess } from "@/components/sections/CollaborationProcess"
+import { CollaborationModels } from "@/components/sections/CollaborationModels"
 import { ProjectOutcomes } from "@/components/sections/ProjectOutcomes"
+import { ProjectScenarios } from "@/components/sections/ProjectScenarios"
 import { FAQ } from "@/components/sections/FAQ"
 import { services } from "@/data/services"
 import { business } from "@/data/business"
@@ -33,7 +35,7 @@ export default function ServicesPage() {
       </Section>
 
       <Section className="!pt-0">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-2">
           {services.map((service) => {
             const Icon = service.icon
             return (
@@ -50,6 +52,33 @@ export default function ServicesPage() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {service.description}
                 </p>
+                <div className="mt-5 grid gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      Kdy se hodí
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground/90">
+                      {service.when}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      Výstup
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground/90">
+                      {service.output}
+                    </p>
+                  </div>
+                  <div className="flex gap-3 rounded-lg border border-border/60 bg-background/30 p-4">
+                    <ArrowRight
+                      className="mt-0.5 h-4 w-4 flex-none text-brand-teal"
+                      aria-hidden
+                    />
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {service.example}
+                    </p>
+                  </div>
+                </div>
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-brand-gradient-soft opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
@@ -60,6 +89,7 @@ export default function ServicesPage() {
         </div>
       </Section>
 
+      <CollaborationModels />
       <Section className="!pt-0">
         <div className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6 sm:p-8">
           <div className="max-w-3xl">
@@ -79,6 +109,7 @@ export default function ServicesPage() {
         </div>
       </Section>
 
+      <ProjectScenarios />
       <ProjectOutcomes />
       <CollaborationProcess />
       <FAQ />
@@ -89,13 +120,13 @@ export default function ServicesPage() {
             Máte konkrétní zadání?
           </h2>
           <p className="mt-3 text-pretty text-muted-foreground">
-            Napište mi rozsah projektu, termín a orientační rozpočet — ozvu se
-            s návrhem postupu.
+            Napište mi, co řešíte, jaký je současný stav a co má být na konci
+            lepší. Pokud rozsah ještě neznáte, začneme konzultací.
           </p>
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row">
             <ButtonLink href={business.emailHref} variant="primary">
               <Mail className="h-4 w-4" aria-hidden />
-              Nezávazně napsat e-mail
+              Poslat zadání
             </ButtonLink>
             <ButtonRouterLink to="/kontakt" variant="secondary">
               Zobrazit kontakt

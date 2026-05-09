@@ -41,23 +41,27 @@ export function Hero() {
           </p>
 
           <p className="mt-8 max-w-2xl text-pretty text-base leading-relaxed text-foreground/90 sm:text-lg">
-            {business.shortDescription}
+            Stavím menším firmám a podnikatelům weby, interní nástroje a
+            automatizace, které šetří čas, zjednodušují provoz a dají se
+            dlouhodobě udržovat.
           </p>
           <p className="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {business.supportingText}
+            {business.shortDescription} Pokud máte nápad, ruční proces nebo
+            nejasné technické rozhodnutí, pomůžu z něj udělat konkrétní další
+            krok.
           </p>
 
           <div className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
             <ButtonLink href={business.emailHref} variant="primary">
               <Mail className="h-4 w-4" aria-hidden />
-              Napsat e-mail
+              Chci konzultaci
             </ButtonLink>
             <ButtonLink href={business.phoneHref} variant="secondary">
               <Phone className="h-4 w-4" aria-hidden />
               Zavolat
             </ButtonLink>
             <ButtonRouterLink to="/sluzby" variant="ghost">
-              Zobrazit služby
+              Mám projekt
               <ArrowRight className="h-4 w-4" aria-hidden />
             </ButtonRouterLink>
           </div>

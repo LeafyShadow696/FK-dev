@@ -11,12 +11,6 @@
   "lang": "cs",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
       "src": "/favicon-32.png",
       "sizes": "32x32",
       "type": "image/png"

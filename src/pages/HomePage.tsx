@@ -1,7 +1,10 @@
 import { Hero } from "@/components/sections/Hero"
+import { ProblemScenarios } from "@/components/sections/ProblemScenarios"
 import { ServicesOverview } from "@/components/sections/ServicesOverview"
+import { CollaborationModels } from "@/components/sections/CollaborationModels"
 import { WhyMe } from "@/components/sections/WhyMe"
 import { ProjectOutcomes } from "@/components/sections/ProjectOutcomes"
+import { ProjectScenarios } from "@/components/sections/ProjectScenarios"
 import { CollaborationProcess } from "@/components/sections/CollaborationProcess"
 import { TechStack } from "@/components/sections/TechStack"
 import { FAQ } from "@/components/sections/FAQ"
@@ -20,7 +23,10 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <ProblemScenarios />
       <ServicesOverview />
+      <CollaborationModels />
+      <ProjectScenarios />
       <WhyMe />
       <ProjectOutcomes />
       <CollaborationProcess />

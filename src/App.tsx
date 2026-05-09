@@ -14,13 +14,28 @@ import CookiesPage from "@/pages/CookiesPage"
 import TermsPage from "@/pages/TermsPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
+function VercelInsights() {
+  if (
+    typeof window === "undefined" ||
+    !["fkdev.xyz", "www.fkdev.xyz"].includes(window.location.hostname)
+  ) {
+    return null
+  }
+
+  return (
+    <>
+      <Analytics />
+      <SpeedInsights />
+    </>
+  )
+}
+
 export default function App() {
   return (
     <>
       <JsonLd />
       <ScrollToTop />
-      <Analytics />
-      <SpeedInsights />
+      <VercelInsights />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:text-foreground"
