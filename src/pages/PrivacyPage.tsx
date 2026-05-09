@@ -21,6 +21,13 @@ export default function PrivacyPage() {
           <li>{business.legalName}</li>
           <li>{business.brandName}</li>
           <li>
+            <strong>IČO:</strong> {business.ico}
+          </li>
+          <li>
+            <strong>Sídlo dle živnostenského rejstříku:</strong>{" "}
+            {business.registeredOffice.full}
+          </li>
+          <li>
             <strong>Kontaktní adresa:</strong> {business.address.full}
           </li>
           <li>

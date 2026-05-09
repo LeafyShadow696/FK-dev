@@ -60,6 +60,25 @@ export default function ServicesPage() {
         </div>
       </Section>
 
+      <Section className="!pt-0">
+        <div className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6 sm:p-8">
+          <div className="max-w-3xl">
+            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Oprávnění
+            </span>
+            <h2 className="mt-3 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Služby navazují na živnostenské oprávnění
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Činnost je vedena pod IČO {business.ico}. Předmětem podnikání je{" "}
+              {business.tradeName.toLowerCase()}, mimo jiné poskytování
+              software, IT poradenství, zpracování dat, hostingové činnosti,
+              webové portály, konzultace, marketing a školení.
+            </p>
+          </div>
+        </div>
+      </Section>
+
       <ProjectOutcomes />
       <CollaborationProcess />
       <FAQ />

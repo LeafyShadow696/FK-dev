@@ -6,7 +6,7 @@ export default function LegalPage() {
   useSeo({
     title: `Právní údaje | ${business.fullName}`,
     description:
-      "Provozovatel webu fkdev.xyz, kontaktní údaje a obecný popis činnosti František Kalášek / TopBot PwnZ™.",
+      `Provozovatel webu fkdev.xyz, IČO ${business.ico}, sídlo, kontaktní údaje a obecný popis činnosti ${business.fullName}.`,
     path: "/pravni-udaje",
   })
 
@@ -24,7 +24,20 @@ export default function LegalPage() {
             <strong>Brand:</strong> {business.brandName}
           </li>
           <li>
+            <strong>IČO:</strong> {business.ico}
+          </li>
+          <li>
+            <strong>Právní forma:</strong> {business.legalForm}
+          </li>
+          <li>
+            <strong>Sídlo dle živnostenského rejstříku:</strong>{" "}
+            {business.registeredOffice.full}
+          </li>
+          <li>
             <strong>Kontaktní adresa:</strong> {business.address.full}
+          </li>
+          <li>
+            <strong>Datová schránka:</strong> {business.dataBoxId}
           </li>
           <li>
             <strong>E-mail:</strong>{" "}
@@ -37,6 +50,26 @@ export default function LegalPage() {
           <li>
             <strong>Web:</strong>{" "}
             <a href={business.url}>{business.url}</a>
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="Živnostenské oprávnění">
+        <ul>
+          <li>
+            <strong>Předmět podnikání:</strong> {business.tradeName}
+          </li>
+          <li>
+            <strong>Druh živnosti:</strong> {business.tradeType}
+          </li>
+          <li>
+            <strong>Vznik oprávnění:</strong> {business.tradeStartedAt}
+          </li>
+          <li>
+            <strong>Doba platnosti oprávnění:</strong> {business.tradeValidity}
+          </li>
+          <li>
+            <strong>Evidující úřad:</strong> {business.tradeAuthority}
           </li>
         </ul>
       </LegalSection>
