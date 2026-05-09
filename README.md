@@ -27,6 +27,7 @@ Vývojový server běží na `http://localhost:5173`.
 ```bash
 npm run typecheck
 npm run build
+npm run test:e2e
 ```
 
 Build vytváří statické soubory do `dist/`.
@@ -40,6 +41,7 @@ Build vytváří statické soubory do `dist/`.
 - `src/utils/` - SEO helpers, JSON-LD a utility
 - `public/` - favicony, manifest, sitemap, robots a OG obrázek
 - `vercel.json` - Vercel rewrite pro klientské routy Vite aplikace
+- `tests/e2e/` - Playwright smoke testy hlavních produkčních rout
 
 ## Deployment
 

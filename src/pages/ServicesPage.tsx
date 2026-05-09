@@ -1,6 +1,9 @@
 import { Mail } from "lucide-react"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
+import { CollaborationProcess } from "@/components/sections/CollaborationProcess"
+import { ProjectOutcomes } from "@/components/sections/ProjectOutcomes"
+import { FAQ } from "@/components/sections/FAQ"
 import { services } from "@/data/services"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
@@ -56,6 +59,10 @@ export default function ServicesPage() {
           })}
         </div>
       </Section>
+
+      <ProjectOutcomes />
+      <CollaborationProcess />
+      <FAQ />
 
       <Section>
         <div className="border-gradient-brand glow-brand mx-auto max-w-3xl rounded-[calc(var(--radius)+6px)] bg-card/60 p-8 text-center sm:p-12">
