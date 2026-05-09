@@ -7,6 +7,7 @@ import {
   Wrench,
 } from "lucide-react"
 import { Section, SectionHeader } from "@/components/ui/Section"
+import { ButtonRouterLink } from "@/components/ui/Button"
 
 const scenarios = [
   {
@@ -47,7 +48,13 @@ const scenarios = [
   },
 ]
 
-export function ProblemScenarios() {
+interface ProblemScenariosProps {
+  compact?: boolean
+}
+
+export function ProblemScenarios({ compact = false }: ProblemScenariosProps) {
+  const visibleScenarios = compact ? scenarios.slice(0, 3) : scenarios
+
   return (
     <Section id="problemy">
       <SectionHeader
@@ -58,11 +65,15 @@ export function ProblemScenarios() {
             <span className="text-gradient-brand">s projektem</span>
           </>
         }
-        description="Nemusíte mít hotové zadání. Stačí problém, opakovaná ruční práce nebo nápad, který potřebuje technicky uchopit."
+        description={
+          compact
+            ? "Krátký přehled situací, ve kterých dává smysl ozvat se. Detailnější příklady jsou na samostatné stránce."
+            : "Nemusíte mít hotové zadání. Stačí problém, opakovaná ruční práce nebo nápad, který potřebuje technicky uchopit."
+        }
       />
 
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {scenarios.map((item) => {
+        {visibleScenarios.map((item) => {
           const Icon = item.icon
           return (
             <article
@@ -82,6 +93,14 @@ export function ProblemScenarios() {
           )
         })}
       </div>
+
+      {compact && (
+        <div className="mt-10 flex justify-center">
+          <ButtonRouterLink to="/priklady" variant="secondary">
+            Další typické situace
+          </ButtonRouterLink>
+        </div>
+      )}
     </Section>
   )
 }

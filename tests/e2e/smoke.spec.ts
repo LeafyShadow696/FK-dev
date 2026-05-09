@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test"
 const routes = [
   { path: "/", h1: "František Kalášek" },
   { path: "/sluzby", h1: "Digitální řešení a automatizace" },
+  { path: "/spoluprace", h1: "Od prvního zadání po předání řešení" },
+  { path: "/priklady", h1: "Problémy a scénáře" },
   { path: "/kontakt", h1: "Spojme se a něco postavme" },
   { path: "/cookies", h1: "Zásady používání cookies" },
   { path: "/ochrana-osobnich-udaju", h1: "Ochrana osobních údajů" },
@@ -26,10 +28,11 @@ test.describe("production routes", () => {
 test("home page has primary contact actions", async ({ page }) => {
   await page.goto("/")
 
-  await expect(page.getByText("Typické situace")).toBeVisible()
+  await expect(page.getByText("Typické situace", { exact: true })).toBeVisible()
   await expect(page.getByText("Ruční práce bere čas")).toBeVisible()
-  await expect(page.getByText("Konzultace nebo audit")).toBeVisible()
-  await expect(page.getByText("Automatizace opakované agendy")).toBeVisible()
+  await expect(page.getByRole("link", { name: "Další typické situace" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Všechny služby" })).toBeVisible()
+  await expect(page.getByText("Pojďme to probrat")).toBeVisible()
   await expect(page.getByRole("link", { name: "Napsat e-mail" }).first()).toBeVisible()
   await expect(page.getByRole("link", { name: "Chci konzultaci" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Zavolat" }).first()).toBeVisible()
@@ -41,8 +44,28 @@ test("services page explains fit, outputs, and examples", async ({ page }) => {
 
   await expect(page.getByText("Kdy se hodí").first()).toBeVisible()
   await expect(page.getByText("Výstup").first()).toBeVisible()
-  await expect(page.getByText("Poptávkový web pro službu")).toBeVisible()
+  await expect(page.getByRole("link", { name: "Jak probíhá spolupráce" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Příklady řešení" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Poslat zadání" })).toBeVisible()
+})
+
+test("collaboration page contains process and FAQ", async ({ page }) => {
+  await page.goto("/spoluprace")
+
+  await expect(page.getByText("Konzultace nebo audit")).toBeVisible()
+  await expect(page.getByText("Návrh postupu")).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "Co má být na konci hotové" }),
+  ).toBeVisible()
+  await expect(page.getByText("Časté otázky před spoluprací")).toBeVisible()
+})
+
+test("examples page contains scenarios and CTA", async ({ page }) => {
+  await page.goto("/priklady")
+
+  await expect(page.getByText("Ruční práce bere čas")).toBeVisible()
+  await expect(page.getByText("Automatizace opakované agendy")).toBeVisible()
+  await expect(page.getByRole("link", { name: "Popsat problém" })).toBeVisible()
 })
 
 test("mobile navigation opens", async ({ page }) => {
@@ -51,6 +74,8 @@ test("mobile navigation opens", async ({ page }) => {
   await page.getByRole("button", { name: "Otevřít menu" }).click()
 
   await expect(page.getByRole("navigation", { name: "Mobilní" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Spolupráce" }).last()).toBeVisible()
+  await expect(page.getByRole("link", { name: "Příklady" }).last()).toBeVisible()
   await expect(page.getByRole("link", { name: "Kontakt" }).last()).toBeVisible()
 })
 

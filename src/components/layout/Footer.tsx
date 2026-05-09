@@ -6,6 +6,8 @@ import { business } from "@/data/business"
 const mainLinks = [
   { href: "/", label: "Úvod" },
   { href: "/sluzby", label: "Služby" },
+  { href: "/spoluprace", label: "Spolupráce" },
+  { href: "/priklady", label: "Příklady" },
   { href: "/kontakt", label: "Kontakt" },
 ]
 

@@ -7,6 +7,8 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop"
 import { JsonLd } from "@/components/seo/JsonLd"
 import HomePage from "@/pages/HomePage"
 import ServicesPage from "@/pages/ServicesPage"
+import CollaborationPage from "@/pages/CollaborationPage"
+import ExamplesPage from "@/pages/ExamplesPage"
 import ContactPage from "@/pages/ContactPage"
 import LegalPage from "@/pages/LegalPage"
 import PrivacyPage from "@/pages/PrivacyPage"
@@ -47,6 +49,8 @@ export default function App() {
         <Switch>
           <Route path="/" component={HomePage} />
           <Route path="/sluzby" component={ServicesPage} />
+          <Route path="/spoluprace" component={CollaborationPage} />
+          <Route path="/priklady" component={ExamplesPage} />
           <Route path="/kontakt" component={ContactPage} />
           <Route path="/pravni-udaje" component={LegalPage} />
           <Route path="/ochrana-osobnich-udaju" component={PrivacyPage} />

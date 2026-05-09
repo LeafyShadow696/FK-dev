@@ -9,6 +9,8 @@ import { business } from "@/data/business"
 const nav = [
   { href: "/", label: "Úvod" },
   { href: "/sluzby", label: "Služby" },
+  { href: "/spoluprace", label: "Spolupráce" },
+  { href: "/priklady", label: "Příklady" },
   { href: "/kontakt", label: "Kontakt" },
 ]
 
@@ -65,7 +67,7 @@ export function Header() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "relative rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                      "relative rounded-md px-3 py-2 text-sm font-medium transition-colors",
                       active
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
@@ -111,7 +113,7 @@ export function Header() {
         id="mobile-nav"
         className={cn(
           "overflow-hidden border-b border-border/60 bg-background/95 backdrop-blur-md transition-[max-height] duration-300 md:hidden",
-          open ? "max-h-96" : "max-h-0",
+          open ? "max-h-[28rem]" : "max-h-0",
         )}
       >
         <nav aria-label="Mobilní" className="px-5 pb-5 pt-2 sm:px-8">

@@ -1,11 +1,6 @@
 import { ArrowRight, Mail } from "lucide-react"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
-import { CollaborationProcess } from "@/components/sections/CollaborationProcess"
-import { CollaborationModels } from "@/components/sections/CollaborationModels"
-import { ProjectOutcomes } from "@/components/sections/ProjectOutcomes"
-import { ProjectScenarios } from "@/components/sections/ProjectScenarios"
-import { FAQ } from "@/components/sections/FAQ"
 import { services } from "@/data/services"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
@@ -89,7 +84,6 @@ export default function ServicesPage() {
         </div>
       </Section>
 
-      <CollaborationModels />
       <Section className="!pt-0">
         <div className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6 sm:p-8">
           <div className="max-w-3xl">
@@ -109,11 +103,6 @@ export default function ServicesPage() {
         </div>
       </Section>
 
-      <ProjectScenarios />
-      <ProjectOutcomes />
-      <CollaborationProcess />
-      <FAQ />
-
       <Section>
         <div className="border-gradient-brand glow-brand mx-auto max-w-3xl rounded-[calc(var(--radius)+6px)] bg-card/60 p-8 text-center sm:p-12">
           <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -130,6 +119,12 @@ export default function ServicesPage() {
             </ButtonLink>
             <ButtonRouterLink to="/kontakt" variant="secondary">
               Zobrazit kontakt
+            </ButtonRouterLink>
+            <ButtonRouterLink to="/spoluprace" variant="ghost">
+              Jak probíhá spolupráce
+            </ButtonRouterLink>
+            <ButtonRouterLink to="/priklady" variant="ghost">
+              Příklady řešení
             </ButtonRouterLink>
           </div>
         </div>
