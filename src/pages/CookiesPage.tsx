@@ -6,7 +6,7 @@ export default function CookiesPage() {
   useSeo({
     title: `Zásady používání cookies | ${business.fullName}`,
     description:
-      "Web fkdev.xyz aktuálně používá pouze technické cookies a obdobné technologie nezbytné pro správné fungování webu.",
+      "Web fkdev.xyz používá technické technologie nezbytné pro provoz webu a měření návštěvnosti přes Vercel Analytics a Speed Insights.",
     path: "/cookies",
   })
 
@@ -26,9 +26,10 @@ export default function CookiesPage() {
 
       <LegalSection title="2. Jaké cookies web používá">
         <p>
-          Web aktuálně používá pouze technické cookies nebo obdobné
-          technologie nezbytné pro správné fungování, bezpečnost a základní
-          provoz webu.
+          Web používá technické cookies nebo obdobné technologie nezbytné pro
+          správné fungování, bezpečnost a základní provoz webu. Současně je
+          nasazeno měření návštěvnosti a výkonu přes Vercel Analytics a Vercel
+          Speed Insights.
         </p>
       </LegalSection>
 
@@ -42,10 +43,12 @@ export default function CookiesPage() {
 
       <LegalSection title="4. Analytické a marketingové cookies">
         <p>
-          Web aktuálně nepoužívá analytické ani marketingové cookies, pokud
-          nejsou výslovně doplněny v budoucnu. Pokud k nasazení takových
-          nástrojů v budoucnu dojde, bude tato stránka aktualizována a před
-          jejich aktivací bude implementováno řízení souhlasu.
+          Web používá Vercel Analytics a Vercel Speed Insights pro základní
+          měření návštěvnosti, výkonu a technického stavu webu. Web aktuálně
+          nepoužívá marketingové cookies ani reklamní profilování. Pokud budou
+          v budoucnu doplněny marketingové nebo jiné netechnické nástroje,
+          bude tato stránka aktualizována a před jejich aktivací bude
+          implementováno řízení souhlasu.
         </p>
       </LegalSection>
 
@@ -53,8 +56,8 @@ export default function CookiesPage() {
         <ul>
           <li>technické cookies souhlas nevyžadují,</li>
           <li>
-            analytické a marketingové cookies vyžadují předchozí souhlas
-            návštěvníka,
+            marketingové cookies a reklamní profilování vyžadují předchozí
+            souhlas návštěvníka,
           </li>
           <li>
             pokud budou v budoucnu doplněny netechnické nástroje, bude nejprve
@@ -88,9 +91,10 @@ export default function CookiesPage() {
 
       <LegalSection title="8. Budoucí změny">
         <p>
-          Pokud budou v budoucnu nasazeny analytické nebo marketingové
-          nástroje, bude tato stránka aktualizována a bude doplněn nástroj pro
-          správu souhlasu, který umožní volbu jednotlivých kategorií cookies.
+          Pokud budou v budoucnu nasazeny další analytické, marketingové nebo
+          reklamní nástroje, bude tato stránka aktualizována a podle potřeby
+          bude doplněn nástroj pro správu souhlasu, který umožní volbu
+          jednotlivých kategorií cookies.
         </p>
         <p>
           V případě dotazů ke zpracování cookies a obdobných technologií se

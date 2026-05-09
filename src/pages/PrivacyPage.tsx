@@ -53,6 +53,10 @@ export default function PrivacyPage() {
             technické údaje nezbytné pro bezpečný provoz webu, například IP
             adresa, serverové logy, typ prohlížeče nebo zařízení
           </li>
+          <li>
+            agregované údaje o návštěvnosti a výkonu webu z nástrojů Vercel
+            Analytics a Vercel Speed Insights
+          </li>
         </ul>
       </LegalSection>
 
@@ -65,6 +69,7 @@ export default function PrivacyPage() {
           <li>plnění zákonných povinností</li>
           <li>ochrana právních nároků</li>
           <li>bezpečný provoz webu</li>
+          <li>měření návštěvnosti, výkonu a stability webu</li>
         </ul>
       </LegalSection>
 
@@ -73,7 +78,7 @@ export default function PrivacyPage() {
           <li>jednání o smlouvě nebo plnění smlouvy</li>
           <li>
             oprávněný zájem na komunikaci, ochraně právních nároků a bezpečném
-            provozu webu
+            provozu webu včetně základního měření návštěvnosti a výkonu
           </li>
           <li>splnění právních povinností</li>
           <li>
@@ -99,12 +104,14 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>poskytovatel hostingu</li>
+          <li>poskytovatel analytiky a měření výkonu webu</li>
           <li>poskytovatel e-mailových služeb</li>
           <li>technická správa webu</li>
           <li>účetní nebo právní poradce, pokud je to nutné</li>
         </ul>
         <p>
-          Konkrétní zpracovatelé nejsou v této verzi dokumentu uváděni a budou
+          Pro hosting, základní webovou analytiku a měření výkonu může být
+          využívána platforma Vercel. Další konkrétní zpracovatelé budou
           případně doplněni podle skutečného technického nasazení.
         </p>
       </LegalSection>
