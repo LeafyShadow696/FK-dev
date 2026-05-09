@@ -39,6 +39,7 @@ Build vytváří statické soubory do `dist/`.
 - `src/data/` - centralizovaná business data a seznam služeb
 - `src/utils/` - SEO helpers, JSON-LD a utility
 - `public/` - favicony, manifest, sitemap, robots a OG obrázek
+- `vercel.json` - Vercel rewrite pro klientské routy Vite aplikace
 
 ## Deployment
 
