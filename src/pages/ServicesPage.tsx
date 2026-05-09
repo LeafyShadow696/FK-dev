@@ -5,6 +5,24 @@ import { services } from "@/data/services"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
 
+const pillars = [
+  {
+    title: "Weby a PWA",
+    description:
+      "Prezentační weby, landing page, klientská rozhraní a PWA aplikace, které mají jasný účel a dobře se provozují.",
+  },
+  {
+    title: "Automatizace a interní nástroje",
+    description:
+      "Skripty, menší aplikace, datové workflow a API propojení pro opakované procesy, které nemají zůstávat ruční.",
+  },
+  {
+    title: "Technické konzultace a provoz",
+    description:
+      "Rozhodnutí před vývojem, audit stávajícího řešení, hosting, DNS, měření, předání a dlouhodobější technická podpora.",
+  },
+]
+
 export default function ServicesPage() {
   useSeo({
     title: `Služby | ${business.fullName}`,
@@ -27,6 +45,24 @@ export default function ServicesPage() {
           }
           description="Digitální řešení, automatizace a webové aplikace pro podnikatele a firmy."
         />
+      </Section>
+
+      <Section className="!pt-0">
+        <div className="grid gap-5 lg:grid-cols-3">
+          {pillars.map((pillar) => (
+            <article
+              key={pillar.title}
+              className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6"
+            >
+              <h2 className="font-display text-xl font-semibold text-foreground">
+                {pillar.title}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {pillar.description}
+              </p>
+            </article>
+          ))}
+        </div>
       </Section>
 
       <Section className="!pt-0">

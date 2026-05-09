@@ -1,5 +1,6 @@
 import { ProblemScenarios } from "@/components/sections/ProblemScenarios"
 import { ProjectScenarios } from "@/components/sections/ProjectScenarios"
+import { CaseStudies } from "@/components/sections/CaseStudies"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
 import { Mail } from "lucide-react"
@@ -32,6 +33,7 @@ export default function ExamplesPage() {
 
       <ProblemScenarios />
       <ProjectScenarios />
+      <CaseStudies />
 
       <Section>
         <div className="border-gradient-brand glow-brand mx-auto max-w-3xl rounded-[calc(var(--radius)+6px)] bg-card/60 p-8 text-center sm:p-12">

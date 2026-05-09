@@ -2,6 +2,7 @@ import { Globe, Mail, MapPin, Phone } from "lucide-react"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
 import { FKMonogram } from "@/components/brand/FKMonogram"
+import { ContactBrief } from "@/components/sections/ContactBrief"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
 
@@ -128,6 +129,7 @@ export default function ContactPage() {
           </div>
         </div>
       </Section>
+      <ContactBrief />
     </main>
   )
 }

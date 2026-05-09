@@ -42,6 +42,9 @@ test("home page has primary contact actions", async ({ page }) => {
 test("services page explains fit, outputs, and examples", async ({ page }) => {
   await page.goto("/sluzby")
 
+  await expect(page.getByText("Weby a PWA")).toBeVisible()
+  await expect(page.getByText("Automatizace a interní nástroje")).toBeVisible()
+  await expect(page.getByText("Technické konzultace a provoz")).toBeVisible()
   await expect(page.getByText("Kdy se hodí").first()).toBeVisible()
   await expect(page.getByText("Výstup").first()).toBeVisible()
   await expect(page.getByRole("link", { name: "Jak probíhá spolupráce" })).toBeVisible()
@@ -65,7 +68,18 @@ test("examples page contains scenarios and CTA", async ({ page }) => {
 
   await expect(page.getByText("Ruční práce bere čas")).toBeVisible()
   await expect(page.getByText("Automatizace opakované agendy")).toBeVisible()
+  await expect(page.getByText("Automatizace tabulkového procesu")).toBeVisible()
+  await expect(page.getByText("API propojení nástrojů")).toBeVisible()
   await expect(page.getByRole("link", { name: "Popsat problém" })).toBeVisible()
+})
+
+test("contact page provides brief guidance and copy actions", async ({ page }) => {
+  await page.goto("/kontakt")
+
+  await expect(page.getByText("Co poslat pro rychlejší návrh postupu")).toBeVisible()
+  await expect(page.getByText("Co řešíte a proč je to teď důležité")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Zkopírovat e-mail" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Zkopírovat šablonu" })).toBeVisible()
 })
 
 test("mobile navigation opens", async ({ page }) => {
