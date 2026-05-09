@@ -73,7 +73,7 @@ export function AmbientBackground({ className }: AmbientBackgroundProps) {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(70% 60% at 50% 40%, transparent 0%, hsl(240 10% 4% / 0.55) 80%, hsl(240 10% 4% / 0.85) 100%)",
+            "radial-gradient(70% 60% at 50% 40%, transparent 0%, hsl(var(--background) / 0.48) 80%, hsl(var(--background) / 0.78) 100%)",
         }}
       />
     </div>

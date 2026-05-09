@@ -39,3 +39,23 @@ test("mobile navigation opens", async ({ page }) => {
   await expect(page.getByRole("navigation", { name: "Mobilní" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Kontakt" }).last()).toBeVisible()
 })
+
+test("theme toggle persists the selected color mode", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("theme", "dark"))
+  await page.goto("/")
+
+  await expect(page.locator("html")).toHaveClass(/dark/)
+  await page
+    .getByRole("button", { name: "Přepnout na světlý režim" })
+    .first()
+    .click()
+
+  await expect(page.locator("html")).toHaveClass(/light/)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#f7f6fb",
+  )
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("theme")))
+    .toBe("light")
+})

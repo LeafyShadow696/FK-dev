@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Premium dark theme inspired by the brand reference imagery. */
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
 
@@ -32,6 +31,29 @@
     --font-display: "Cormorant Garamond", "ui-serif", "Georgia", "serif";
   }
 
+  :root.light {
+    --background: 270 22% 97%;
+    --foreground: 235 18% 12%;
+
+    --muted: 260 20% 92%;
+    --muted-foreground: 235 9% 38%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 235 18% 12%;
+
+    --border: 250 20% 84%;
+    --accent: 268 70% 54%;
+    --accent-foreground: 0 0% 100%;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+
+  :root.light {
+    color-scheme: light;
+  }
+
   * {
     border-color: hsl(var(--border));
   }
@@ -42,6 +64,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
   body {
@@ -49,6 +74,9 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     min-height: 100dvh;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
   ::selection {

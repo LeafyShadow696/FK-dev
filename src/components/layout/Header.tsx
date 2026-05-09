@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter"
 import { Menu, X } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { FKMonogram } from "@/components/brand/FKMonogram"
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { business } from "@/data/business"
 
 const nav = [
@@ -81,7 +82,8 @@ export function Header() {
           </ul>
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           <a
             href={business.emailHref}
             className="inline-flex items-center rounded-full border border-border/70 bg-card/40 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand-violet/60 hover:text-foreground"
@@ -90,16 +92,19 @@ export function Header() {
           </a>
         </div>
 
-        <button
-          type="button"
-          aria-label={open ? "Zavřít menu" : "Otevřít menu"}
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-card/40 text-foreground md:hidden"
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            aria-label={open ? "Zavřít menu" : "Otevřít menu"}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-card/40 text-foreground"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <div
