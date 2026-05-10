@@ -1,63 +1,81 @@
 # fkdev.xyz
 
-Prezentační web pro František Kalášek / TopBot PwnZ™ postavený jako statická
-React aplikace nad Vite.
+Oficiální prezentační web značky **František Kalášek / TopBot PwnZ™**.
 
-## Stack
+Projekt slouží jako veřejná digitální vizitka pro vývoj webových aplikací,
+PWA řešení, automatizaci, API integrace, cloudové a self-hosted systémy a
+technologické konzultace. Cílem webu je rychle vysvětlit, s čím mohu klientům
+pomoci, jak přemýšlím o spolupráci a jak se dostat od prvního kontaktu ke
+konkrétnímu zadání.
 
-- React 18 + TypeScript
-- Vite 5
-- Tailwind CSS
-- wouter pro klientské routování
-- framer-motion pro animace
-- Three.js / React Three Fiber pro hero pozadí
-- Vercel Analytics a Speed Insights
+> Bridge the gap, create the world.
 
-## Lokální vývoj
+## O značce
 
-```bash
-npm install
-npm run dev
-```
+**František Kalášek / TopBot PwnZ™** propojuje praktický vývoj, automatizaci
+a technické poradenství. Fokus není jen na samotném kódu, ale na funkční
+výsledné cestě: od pochopení problému přes návrh řešení až po předání,
+provozní stabilitu a další rozvoj.
 
-Vývojový server běží na `http://localhost:5173`.
+Typické oblasti práce:
 
-## Kontroly a build
+- webové aplikace, firemní weby a PWA
+- Python automatizace a interní nástroje
+- API integrace a propojování systémů
+- cloudová a self-hosted řešení
+- technické konzultace, audity a prioritizace
+- hostingové workflow, data a webové portály
+- základní technické SEO, struktura webu a digitální poradenství
+- školení, předávací dokumentace a technická podpora
 
-```bash
-npm run typecheck
-npm run build
-npm run test:e2e
-```
+## Co web komunikuje
 
-Build vytváří statické soubory do `dist/`.
+Web je navržený jako business landing page s rozdělením do menších,
+samostatných URL. Nejde jen o dlouhou jednorázovou stránku, ale o přehlednou
+prezentaci služeb, spolupráce, příkladů použití, kontaktu a povinných
+informačních stránek.
 
-## Struktura
+Hlavní obsahové části:
 
-- `src/App.tsx` - globální layout, routy a Vercel měření
-- `src/pages/` - stránky webu
-- `src/components/` - UI, layout, sekce, SEO a 3D komponenty
-- `src/data/` - centralizovaná business data a seznam služeb
-- `src/utils/` - SEO helpers, JSON-LD a utility
-- `public/` - favicony, manifest, sitemap, robots a OG obrázek
-- `vercel.json` - Vercel rewrite pro klientské routy Vite aplikace
-- `tests/e2e/` - Playwright smoke testy hlavních produkčních rout
+- **Úvod** - rychlé představení hodnoty, primární kontakt a hlavní oblasti
+  služeb.
+- **Služby** - konkrétnější popis toho, kdy dává jednotlivá služba smysl,
+  jaký může být výstup a příklad využití.
+- **Spolupráce** - postup od první zprávy přes návrh řešení až po předání.
+- **Příklady** - modelové scénáře, ve kterých se ukazuje praktické použití
+  nabízených služeb.
+- **Kontakt** - rychlé kontaktní volby, šablona poptávky, adresa a mapa.
+- **Legální stránky** - obchodní podmínky, ochrana osobních údajů a cookies.
 
-## Deployment
+## Charakter projektu
 
-Produkční doména: `https://fkdev.xyz`
+Tento repozitář reprezentuje nejen kód webu, ale i způsob prezentace značky:
 
-Projekt používá npm jako package manager. Zdroj pravdy pro dependency strom je
-`package-lock.json`.
+- věcný, profesionální a srozumitelný jazyk
+- důraz na reálně použitelné výstupy místo obecných slibů
+- jasná cesta ke kontaktu a zadání poptávky
+- konzistentní veřejné business údaje napříč webem
+- responzivní rozhraní s ohledem na mobilní návštěvníky
+- základní SEO metadata, sitemap, robots, Open Graph a web manifest
+- produkční kontrola přes automatizované E2E testy
 
-### DNS
+## Realizace
 
-Doména je spravovaná mimo repozitář. Pro Vercel deployment ověř DNS záznamy ve
-Vercel dashboardu nebo přes `vercel domains inspect fkdev.xyz`.
+Web je postavený jako statická React aplikace nad Vite. Používá TypeScript,
+Tailwind CSS, klientský routing, animace, 3D hero pozadí a Vercel Analytics /
+Speed Insights. Smoke testy pokrývají hlavní produkční routy, mobilní navigaci,
+kontaktní prvky, mapu, SEO metadata a manifest.
 
-Obecná Vercel konfigurace pro apex doménu je:
+Živá verze:
 
-- `A` záznam pro `@` na `76.76.21.21`
-- volitelně `CNAME` pro `www` na hodnotu doporučenou Vercel dashboardem
+- <https://fkdev.xyz>
+- <https://www.fkdev.xyz>
 
-Pokud jsou DNS záznamy změněné u registrátora, propagace může trvat až 24 hodin.
+## Kontakt
+
+František Kalášek / TopBot PwnZ™
+
+- Web: <https://fkdev.xyz>
+- E-mail: <FandaKalasek@icloud.com>
+- Telefon: [+420 722 426 195](tel:+420722426195)
+- Kontaktní adresa: Javorek 54, 592 03 Javorek, Česko
