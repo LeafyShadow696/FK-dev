@@ -125,47 +125,48 @@ test("mobile navigation opens", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Kontakt" }).last()).toBeVisible()
 })
 
-test("mobile monograms use render-safe unique gradients", async ({ page }) => {
+test("mobile monograms render without gradient-url dependency", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/")
 
   await expect(page.locator('header [data-testid="fk-monogram"]')).toBeVisible()
   await expect(page.locator('#vizitka [data-testid="fk-monogram"]')).toBeVisible()
 
-  const gradientChecks = await page.evaluate(() => {
+  const monogramChecks = await page.evaluate(() => {
     const svgs = [
       document.querySelector('header [data-testid="fk-monogram"]'),
       document.querySelector('#vizitka [data-testid="fk-monogram"]'),
     ].filter((svg): svg is Element => svg instanceof Element)
 
     return svgs.map((svg) => {
-      const gradient = svg.querySelector("linearGradient")
-      const gradientId = gradient?.getAttribute("id") ?? ""
-      const stroke = svg.querySelector("g")?.getAttribute("stroke") ?? ""
-      const stopColors = Array.from(svg.querySelectorAll("stop")).map((stop) =>
-        stop.getAttribute("stop-color") ?? "",
+      const gradients = svg.querySelectorAll("linearGradient").length
+      const strokes = Array.from(svg.querySelectorAll("path")).map((path) =>
+        path.getAttribute("stroke") ?? "",
       )
       const rect = svg.getBoundingClientRect()
 
       return {
-        gradientId,
-        stroke,
-        stopColors,
+        gradients,
+        strokes,
         visibleBox: rect.width > 0 && rect.height > 0,
       }
     })
   })
 
-  expect(gradientChecks).toHaveLength(2)
-  expect(new Set(gradientChecks.map((item) => item.gradientId)).size).toBe(
-    gradientChecks.length,
-  )
+  expect(monogramChecks).toHaveLength(2)
 
-  for (const item of gradientChecks) {
+  for (const item of monogramChecks) {
     expect(item.visibleBox).toBe(true)
-    expect(item.gradientId).toMatch(/^fk-grad-/)
-    expect(item.stroke).toBe(`url(#${item.gradientId})`)
-    expect(item.stopColors).toEqual(["#f25aa6", "#8c5add", "#3ed9cf"])
+    expect(item.gradients).toBe(0)
+    expect(item.strokes).toEqual([
+      "#f25aa6",
+      "#b05ee7",
+      "#8c5add",
+      "#7a78e8",
+      "#5aa6e8",
+      "#3ed9cf",
+    ])
+    expect(item.strokes.some((stroke) => stroke.includes("url("))).toBe(false)
   }
 })
 
