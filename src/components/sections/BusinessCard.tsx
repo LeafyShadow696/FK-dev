@@ -2,6 +2,7 @@ import { Globe, Mail, MapPin, Phone } from "lucide-react"
 import { motion } from "framer-motion"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { FKMonogram } from "@/components/brand/FKMonogram"
+import { AddressLink } from "@/components/ui/AddressLink"
 import { business } from "@/data/business"
 
 export function BusinessCard() {
@@ -84,9 +85,12 @@ export function BusinessCard() {
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
                     <MapPin className="h-4 w-4 text-brand-teal" aria-hidden />
                   </span>
-                  <span className="text-foreground/90">
+                  <AddressLink
+                    href={business.address.mapsHref}
+                    className="text-foreground/90"
+                  >
                     {business.address.full}
-                  </span>
+                  </AddressLink>
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">

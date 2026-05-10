@@ -30,6 +30,10 @@ export const business = {
     country: "Česko",
     countryCode: "CZ",
     full: "Javorek 54, 592 03 Javorek, Česko",
+    mapsHref:
+      "https://www.google.com/maps/search/?api=1&query=Javorek%2054%2C%20592%2003%20Javorek%2C%20%C4%8Cesko",
+    mapEmbedSrc:
+      "https://www.google.com/maps?q=Javorek%2054%2C%20592%2003%20Javorek%2C%20%C4%8Cesko&output=embed",
   },
   registeredOffice: {
     label: "Sídlo dle živnostenského rejstříku",
@@ -39,6 +43,8 @@ export const business = {
     country: "Česko",
     countryCode: "CZ",
     full: "Daňkovice 9, 592 03 Daňkovice, Česko",
+    mapsHref:
+      "https://www.google.com/maps/search/?api=1&query=Da%C5%88kovice%209%2C%20592%2003%20Da%C5%88kovice%2C%20%C4%8Cesko",
   },
   description:
     "František Kalášek / TopBot PwnZ™ se zaměřuje na vývoj webových aplikací, PWA řešení, automatizací, API integrací, cloudových a self-hosted systémů a technologických konzultací. Cílem je vytvářet funkční, profesionální a dlouhodobě udržitelná digitální řešení.",

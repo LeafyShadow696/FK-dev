@@ -78,13 +78,31 @@ test("contact page provides brief guidance and copy actions", async ({ page }) =
 
   await expect(page.getByText("Co poslat pro rychlejší návrh postupu")).toBeVisible()
   await expect(page.getByText("Co řešíte a proč je to teď důležité")).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "Javorek 54, 592 03 Javorek, Česko" }).first(),
+  ).toHaveAttribute("href", /google\.com\/maps/)
   await expect(page.getByRole("button", { name: "Zkopírovat e-mail" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Zkopírovat šablonu" })).toBeVisible()
+})
+
+test("footer exposes embedded map and map links", async ({ page }) => {
+  await page.goto("/")
+
+  await expect(page.getByRole("heading", { name: "Kontaktní adresa" })).toBeVisible()
+  await expect(page.locator('iframe[title^="Mapa:"]')).toHaveAttribute(
+    "src",
+    /google\.com\/maps/,
+  )
+  await expect(
+    page.getByRole("link", { name: /Javorek 54/ }).last(),
+  ).toHaveAttribute("target", "_blank")
 })
 
 test("mobile navigation opens", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/")
+
+  await expect(page.getByRole("link", { name: /František Kalášek/ }).first()).toBeVisible()
   await page.getByRole("button", { name: "Otevřít menu" }).click()
 
   await expect(page.getByRole("navigation", { name: "Mobilní" })).toBeVisible()

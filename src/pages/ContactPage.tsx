@@ -3,6 +3,7 @@ import { Section, SectionHeader } from "@/components/ui/Section"
 import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
 import { FKMonogram } from "@/components/brand/FKMonogram"
 import { ContactBrief } from "@/components/sections/ContactBrief"
+import { AddressLink } from "@/components/ui/AddressLink"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
 
@@ -90,9 +91,12 @@ export default function ContactPage() {
                   <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
                     <MapPin className="h-4 w-4 text-brand-teal" aria-hidden />
                   </span>
-                  <span className="text-sm text-foreground/90 sm:text-base">
+                  <AddressLink
+                    href={business.address.mapsHref}
+                    className="text-sm text-foreground/90 sm:text-base"
+                  >
                     {business.address.full}
-                  </span>
+                  </AddressLink>
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">

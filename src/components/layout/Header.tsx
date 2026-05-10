@@ -42,17 +42,17 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link
           href="/"
-          className="group flex items-center gap-3"
+          className="group flex min-w-0 items-center gap-3"
           aria-label={`${business.legalName} — domů`}
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-md border border-border/70 bg-card/60">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-border/70 bg-card/60">
             <FKMonogram className="h-6 w-6" title="FK" />
           </span>
-          <span className="hidden flex-col leading-tight sm:flex">
-            <span className="font-display text-base font-semibold tracking-tight text-gradient-brand">
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate font-display text-sm font-semibold tracking-tight text-gradient-brand sm:text-base">
               {business.legalName}
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="hidden text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:block">
               {business.brandName}
             </span>
           </span>

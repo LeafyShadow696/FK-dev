@@ -1,4 +1,5 @@
 import { LegalLayout, LegalSection } from "@/components/legal/LegalLayout"
+import { AddressLink } from "@/components/ui/AddressLink"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
 
@@ -25,10 +26,15 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Sídlo dle živnostenského rejstříku:</strong>{" "}
-            {business.registeredOffice.full}
+            <AddressLink href={business.registeredOffice.mapsHref}>
+              {business.registeredOffice.full}
+            </AddressLink>
           </li>
           <li>
-            <strong>Kontaktní adresa:</strong> {business.address.full}
+            <strong>Kontaktní adresa:</strong>{" "}
+            <AddressLink href={business.address.mapsHref}>
+              {business.address.full}
+            </AddressLink>
           </li>
           <li>
             <strong>E-mail:</strong>{" "}
