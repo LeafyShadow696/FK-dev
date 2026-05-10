@@ -111,6 +111,50 @@ test("mobile navigation opens", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Kontakt" }).last()).toBeVisible()
 })
 
+test("mobile monograms use render-safe unique gradients", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto("/")
+
+  await expect(page.locator('header [data-testid="fk-monogram"]')).toBeVisible()
+  await expect(page.locator('#vizitka [data-testid="fk-monogram"]')).toBeVisible()
+
+  const gradientChecks = await page.evaluate(() => {
+    const svgs = [
+      document.querySelector('header [data-testid="fk-monogram"]'),
+      document.querySelector('#vizitka [data-testid="fk-monogram"]'),
+    ].filter((svg): svg is Element => svg instanceof Element)
+
+    return svgs.map((svg) => {
+      const gradient = svg.querySelector("linearGradient")
+      const gradientId = gradient?.getAttribute("id") ?? ""
+      const stroke = svg.querySelector("g")?.getAttribute("stroke") ?? ""
+      const stopColors = Array.from(svg.querySelectorAll("stop")).map((stop) =>
+        stop.getAttribute("stop-color") ?? "",
+      )
+      const rect = svg.getBoundingClientRect()
+
+      return {
+        gradientId,
+        stroke,
+        stopColors,
+        visibleBox: rect.width > 0 && rect.height > 0,
+      }
+    })
+  })
+
+  expect(gradientChecks).toHaveLength(2)
+  expect(new Set(gradientChecks.map((item) => item.gradientId)).size).toBe(
+    gradientChecks.length,
+  )
+
+  for (const item of gradientChecks) {
+    expect(item.visibleBox).toBe(true)
+    expect(item.gradientId).toMatch(/^fk-grad-/)
+    expect(item.stroke).toBe(`url(#${item.gradientId})`)
+    expect(item.stopColors).toEqual(["#f25aa6", "#8c5add", "#3ed9cf"])
+  }
+})
+
 test("theme toggle persists the selected color mode", async ({ page }) => {
   await page.addInitScript(() => window.localStorage.setItem("theme", "dark"))
   await page.goto("/")

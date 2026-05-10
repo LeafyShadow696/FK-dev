@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { cn } from "@/utils/cn"
 
 interface FKMonogramProps {
@@ -10,23 +11,27 @@ interface FKMonogramProps {
  * Uses a multi-stop gradient (pink → violet → teal) that mirrors the logo.
  */
 export function FKMonogram({ className, title = "FK monogram" }: FKMonogramProps) {
+  const rawId = useId()
+  const gradientId = `fk-grad-${rawId.replace(/:/g, "")}`
+
   return (
     <svg
       viewBox="0 0 200 200"
       role="img"
       aria-label={title}
+      data-testid="fk-monogram"
       className={cn("h-auto w-auto", className)}
     >
       <defs>
-        <linearGradient id="fk-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="hsl(330 85% 65%)" />
-          <stop offset="50%" stopColor="hsl(268 70% 60%)" />
-          <stop offset="100%" stopColor="hsl(178 65% 55%)" />
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f25aa6" />
+          <stop offset="50%" stopColor="#8c5add" />
+          <stop offset="100%" stopColor="#3ed9cf" />
         </linearGradient>
       </defs>
       <g
         fill="none"
-        stroke="url(#fk-grad)"
+        stroke={`url(#${gradientId})`}
         strokeLinecap="round"
         strokeLinejoin="round"
       >
