@@ -7,7 +7,19 @@
     <meta name="color-scheme" content="dark light" />
     <script>
       ;(() => {
-        const stored = localStorage.getItem("theme")
+        let preferencesAllowed = false
+        try {
+          const consent = JSON.parse(localStorage.getItem("fkdev-consent-v1") || "{}")
+          preferencesAllowed = consent.preferences === true
+        } catch {
+          preferencesAllowed = false
+        }
+        let stored = null
+        try {
+          stored = preferencesAllowed ? localStorage.getItem("theme") : null
+        } catch {
+          stored = null
+        }
         const theme =
           stored === "light" || stored === "dark"
             ? stored

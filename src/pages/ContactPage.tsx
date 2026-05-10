@@ -4,6 +4,7 @@ import { ButtonLink, ButtonRouterLink } from "@/components/ui/Button"
 import { FKMonogram } from "@/components/brand/FKMonogram"
 import { ContactBrief } from "@/components/sections/ContactBrief"
 import { AddressLink } from "@/components/ui/AddressLink"
+import { AddContactButton } from "@/components/contact/AddContactButton"
 import { business } from "@/data/business"
 import { useSeo } from "@/utils/seo"
 
@@ -124,6 +125,7 @@ export default function ContactPage() {
                   Zobrazit služby
                 </ButtonRouterLink>
               </div>
+              <AddContactButton className="mt-4" />
 
               <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
                 E-mailová komunikace probíhá přímo přes váš e-mailový klient.

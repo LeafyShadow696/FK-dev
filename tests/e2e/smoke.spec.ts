@@ -83,6 +83,20 @@ test("contact page provides brief guidance and copy actions", async ({ page }) =
   ).toHaveAttribute("href", /google\.com\/maps/)
   await expect(page.getByRole("button", { name: "Zkopírovat e-mail" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Zkopírovat šablonu" })).toBeVisible()
+  await expect(page.locator('a[href="/frantisek-kalasek.vcf"]').first()).toBeVisible()
+})
+
+test("vCard file exposes public contact details", async ({ request }) => {
+  const response = await request.get("/frantisek-kalasek.vcf")
+  const vcard = await response.text()
+
+  expect(response.status()).toBe(200)
+  expect(vcard).toContain("BEGIN:VCARD")
+  expect(vcard).toContain("FN:František Kalášek")
+  expect(vcard).toContain("ORG:TopBot PwnZ™")
+  expect(vcard).toContain("EMAIL;TYPE=INTERNET,WORK:FandaKalasek@icloud.com")
+  expect(vcard).toContain("TEL;TYPE=CELL,VOICE:+420722426195")
+  expect(vcard).toContain("PHOTO;VALUE=URI:https://fkdev.xyz/pwa-icon-512.png")
 })
 
 test("footer exposes embedded map and map links", async ({ page }) => {
@@ -156,7 +170,18 @@ test("mobile monograms use render-safe unique gradients", async ({ page }) => {
 })
 
 test("theme toggle persists the selected color mode", async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.setItem("theme", "dark"))
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "fkdev-consent-v1",
+      JSON.stringify({
+        decided: true,
+        preferences: true,
+        analytics: false,
+        updatedAt: "2026-05-10T00:00:00.000Z",
+      }),
+    )
+    window.localStorage.setItem("theme", "dark")
+  })
   await page.goto("/")
 
   await expect(page.locator("html")).toHaveClass(/dark/)
@@ -173,6 +198,41 @@ test("theme toggle persists the selected color mode", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("theme")))
     .toBe("light")
+})
+
+test("cookie preferences can be saved and reopened", async ({ page }) => {
+  await page.goto("/")
+
+  await expect(page.getByText("Soukromí a nastavení webu")).toBeVisible()
+  await page.getByRole("button", { name: "Nastavit" }).click()
+
+  await expect(page.getByRole("dialog", { name: "Správa souhlasu" })).toBeVisible()
+  await page
+    .locator("label")
+    .filter({ hasText: "Předvolby" })
+    .locator('input[type="checkbox"]')
+    .check()
+  await page
+    .locator("label")
+    .filter({ hasText: "Analytika" })
+    .locator('input[type="checkbox"]')
+    .uncheck()
+  await page.getByRole("button", { name: "Uložit nastavení" }).click()
+
+  await expect(page.getByText("Soukromí a nastavení webu")).toBeHidden()
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.localStorage.getItem("fkdev-consent-v1")),
+    )
+    .toContain('"preferences":true')
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.localStorage.getItem("fkdev-consent-v1")),
+    )
+    .toContain('"analytics":false')
+
+  await page.getByRole("button", { name: "Nastavení cookies" }).click()
+  await expect(page.getByRole("dialog", { name: "Správa souhlasu" })).toBeVisible()
 })
 
 test("home page exposes production SEO metadata", async ({ page }) => {

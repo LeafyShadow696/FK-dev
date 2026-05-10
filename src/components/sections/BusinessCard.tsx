@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { Section, SectionHeader } from "@/components/ui/Section"
 import { FKMonogram } from "@/components/brand/FKMonogram"
 import { AddressLink } from "@/components/ui/AddressLink"
+import { AddContactButton } from "@/components/contact/AddContactButton"
 import { business } from "@/data/business"
 
 export function BusinessCard() {
@@ -104,6 +105,7 @@ export function BusinessCard() {
                   </a>
                 </li>
               </ul>
+              <AddContactButton className="mt-2 flex flex-col items-stretch sm:items-start" />
             </div>
           </div>
         </div>

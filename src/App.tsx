@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { ScrollToTop } from "@/components/layout/ScrollToTop"
 import { JsonLd } from "@/components/seo/JsonLd"
+import { ConsentProvider, useConsent } from "@/components/privacy/ConsentProvider"
 import HomePage from "@/pages/HomePage"
 import ServicesPage from "@/pages/ServicesPage"
 import CollaborationPage from "@/pages/CollaborationPage"
@@ -17,9 +18,12 @@ import TermsPage from "@/pages/TermsPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
 function VercelInsights() {
+  const { consent } = useConsent()
+
   if (
     typeof window === "undefined" ||
-    !["fkdev.xyz", "www.fkdev.xyz"].includes(window.location.hostname)
+    !["fkdev.xyz", "www.fkdev.xyz"].includes(window.location.hostname) ||
+    !consent.analytics
   ) {
     return null
   }
@@ -32,7 +36,7 @@ function VercelInsights() {
   )
 }
 
-export default function App() {
+function AppContent() {
   return (
     <>
       <JsonLd />
@@ -61,5 +65,13 @@ export default function App() {
       </div>
       <Footer />
     </>
+  )
+}
+
+export default function App() {
+  return (
+    <ConsentProvider>
+      <AppContent />
+    </ConsentProvider>
   )
 }

@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
+import { useConsent } from "@/components/privacy/ConsentProvider"
 import { cn } from "@/utils/cn"
 
 type Theme = "light" | "dark"
 
-function getPreferredTheme(): Theme {
+function getSystemTheme(): Theme {
   if (typeof window === "undefined") return "dark"
-  const stored = window.localStorage.getItem("theme")
-  if (stored === "light" || stored === "dark") return stored
   return window.matchMedia("(prefers-color-scheme: light)").matches
     ? "light"
     : "dark"
+}
+
+function getPreferredTheme(canUseStoredPreference: boolean): Theme {
+  if (typeof window === "undefined") return "dark"
+  if (!canUseStoredPreference) return getSystemTheme()
+
+  const stored = window.localStorage.getItem("theme")
+  if (stored === "light" || stored === "dark") return stored
+  return getSystemTheme()
 }
 
 function applyTheme(theme: Theme) {
@@ -27,12 +35,27 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const [theme, setTheme] = useState<Theme>(() => getPreferredTheme())
+  const { consent } = useConsent()
+  const [theme, setTheme] = useState<Theme>(() =>
+    getPreferredTheme(consent.preferences),
+  )
+
+  useEffect(() => {
+    setTheme(getPreferredTheme(consent.preferences))
+  }, [consent.preferences])
 
   useEffect(() => {
     applyTheme(theme)
-    window.localStorage.setItem("theme", theme)
-  }, [theme])
+    try {
+      if (consent.preferences) {
+        window.localStorage.setItem("theme", theme)
+      } else {
+        window.localStorage.removeItem("theme")
+      }
+    } catch {
+      // Theme switching remains available for the current session.
+    }
+  }, [consent.preferences, theme])
 
   const nextTheme = theme === "dark" ? "light" : "dark"
 

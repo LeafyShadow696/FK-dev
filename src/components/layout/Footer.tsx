@@ -3,6 +3,7 @@ import { Mail, MapPin, Phone, Globe } from "lucide-react"
 import { FKMonogram } from "@/components/brand/FKMonogram"
 import { FooterMap } from "@/components/layout/FooterMap"
 import { AddressLink } from "@/components/ui/AddressLink"
+import { useConsent } from "@/components/privacy/ConsentProvider"
 import { business } from "@/data/business"
 
 const mainLinks = [
@@ -22,6 +23,8 @@ const legalLinks = [
 
 export function Footer() {
   const year = new Date().getFullYear()
+  const { openPreferences } = useConsent()
+
   return (
     <footer className="relative mt-32 border-t border-border/60 bg-background/60">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
@@ -120,12 +123,21 @@ export function Footer() {
           <p>
             © {year} {business.fullName}. Všechna práva vyhrazena.
           </p>
-          <AddressLink
-            href={business.address.mapsHref}
-            className="font-medium"
-          >
-            {business.address.full}
-          </AddressLink>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <AddressLink
+              href={business.address.mapsHref}
+              className="font-medium"
+            >
+              {business.address.full}
+            </AddressLink>
+            <button
+              type="button"
+              onClick={openPreferences}
+              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Nastavení cookies
+            </button>
+          </div>
         </div>
       </div>
     </footer>

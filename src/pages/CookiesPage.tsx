@@ -6,7 +6,7 @@ export default function CookiesPage() {
   useSeo({
     title: `Zásady používání cookies | ${business.fullName}`,
     description:
-      "Web fkdev.xyz používá technické technologie nezbytné pro provoz webu a měření návštěvnosti přes Vercel Analytics a Speed Insights.",
+      "Web fkdev.xyz používá nezbytné technologie pro provoz webu a umožňuje návštěvníkovi spravovat předvolby a analytiku.",
     path: "/cookies",
   })
 
@@ -27,9 +27,9 @@ export default function CookiesPage() {
       <LegalSection title="2. Jaké cookies web používá">
         <p>
           Web používá technické cookies nebo obdobné technologie nezbytné pro
-          správné fungování, bezpečnost a základní provoz webu. Současně je
-          nasazeno měření návštěvnosti a výkonu přes Vercel Analytics a Vercel
-          Speed Insights.
+          správné fungování, bezpečnost a základní provoz webu. Volitelně může
+          návštěvník povolit uložení předvoleb a anonymní měření návštěvnosti
+          a výkonu přes Vercel Analytics a Vercel Speed Insights.
         </p>
       </LegalSection>
 
@@ -43,12 +43,12 @@ export default function CookiesPage() {
 
       <LegalSection title="4. Analytické a marketingové cookies">
         <p>
-          Web používá Vercel Analytics a Vercel Speed Insights pro základní
-          měření návštěvnosti, výkonu a technického stavu webu. Web aktuálně
-          nepoužívá marketingové cookies ani reklamní profilování. Pokud budou
-          v budoucnu doplněny marketingové nebo jiné netechnické nástroje,
-          bude tato stránka aktualizována a před jejich aktivací bude
-          implementováno řízení souhlasu.
+          Web může po souhlasu návštěvníka používat Vercel Analytics a Vercel
+          Speed Insights pro základní měření návštěvnosti, výkonu a
+          technického stavu webu. Web aktuálně nepoužívá marketingové cookies
+          ani reklamní profilování. Pokud budou v budoucnu doplněny
+          marketingové nebo jiné netechnické nástroje, bude tato stránka
+          aktualizována a před jejich aktivací bude vyžádán souhlas.
         </p>
       </LegalSection>
 
@@ -56,12 +56,19 @@ export default function CookiesPage() {
         <ul>
           <li>technické cookies souhlas nevyžadují,</li>
           <li>
+            uložení předvolby světlého nebo tmavého režimu je volitelné a
+            probíhá pouze při povolení kategorie předvoleb,
+          </li>
+          <li>
+            analytika a měření výkonu se aktivují pouze po povolení analytiky,
+          </li>
+          <li>
             marketingové cookies a reklamní profilování vyžadují předchozí
             souhlas návštěvníka,
           </li>
           <li>
-            pokud budou v budoucnu doplněny netechnické nástroje, bude nejprve
-            doplněn nástroj pro správu souhlasu (consent management).
+            návštěvník může nastavení kdykoliv změnit přes odkaz „Nastavení
+            cookies“ v patičce webu.
           </li>
         </ul>
       </LegalSection>
@@ -73,10 +80,11 @@ export default function CookiesPage() {
           slouží ke zrychlení načítání a k základnímu fungování webu.
         </p>
         <p>
-          Web aktuálně záměrně nepoužívá <strong>localStorage</strong> ani{" "}
-          <strong>sessionStorage</strong> pro ukládání uživatelských profilů,
-          přihlášení nebo zpráv z kontaktu. Pokud by byly v budoucnu nasazeny,
-          bude tato stránka aktualizována.
+          Web používá <strong>localStorage</strong> pro uložení samotné volby
+          souhlasu. Pokud návštěvník povolí předvolby, může se do
+          localStorage uložit také zvolený světlý nebo tmavý režim. Web
+          nepoužívá localStorage ani sessionStorage pro ukládání uživatelských
+          profilů, přihlášení nebo zpráv z kontaktu.
         </p>
       </LegalSection>
 
@@ -86,6 +94,10 @@ export default function CookiesPage() {
           internetového prohlížeče. Návštěvník je může povolit, blokovat,
           smazat nebo nastavit jejich automatické mazání po skončení relace.
           Omezení technických cookies může mít vliv na funkčnost webu.
+        </p>
+        <p>
+          Nastavení volitelných kategorií na tomto webu lze změnit také přes
+          odkaz „Nastavení cookies“ v patičce webu.
         </p>
       </LegalSection>
 

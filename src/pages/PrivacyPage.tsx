@@ -68,7 +68,12 @@ export default function PrivacyPage() {
           </li>
           <li>
             agregované údaje o návštěvnosti a výkonu webu z nástrojů Vercel
-            Analytics a Vercel Speed Insights
+            Analytics a Vercel Speed Insights, pokud návštěvník povolí
+            analytiku
+          </li>
+          <li>
+            informace uložené v prohlížeči pro správu souhlasu a případně pro
+            zapamatování světlého nebo tmavého režimu
           </li>
         </ul>
       </LegalSection>
@@ -82,7 +87,8 @@ export default function PrivacyPage() {
           <li>plnění zákonných povinností</li>
           <li>ochrana právních nároků</li>
           <li>bezpečný provoz webu</li>
-          <li>měření návštěvnosti, výkonu a stability webu</li>
+          <li>správa souhlasu a volitelných předvoleb webu</li>
+          <li>měření návštěvnosti, výkonu a stability webu po udělení souhlasu</li>
         </ul>
       </LegalSection>
 
@@ -91,8 +97,9 @@ export default function PrivacyPage() {
           <li>jednání o smlouvě nebo plnění smlouvy</li>
           <li>
             oprávněný zájem na komunikaci, ochraně právních nároků a bezpečném
-            provozu webu včetně základního měření návštěvnosti a výkonu
+            provozu webu
           </li>
+          <li>souhlas pro volitelné předvolby a analytiku</li>
           <li>splnění právních povinností</li>
           <li>
             souhlas, pokud by byl v budoucnu použit pro marketing nebo
@@ -133,7 +140,9 @@ export default function PrivacyPage() {
         <p>
           Web neprovozuje vlastní kontaktní formulář pro ukládání zpráv do
           databáze. Kontakt probíhá přímo přes e-mailového klienta návštěvníka
-          nebo telefon.
+          nebo telefon. Stažení digitální vizitky vCard pouze předá veřejné
+          kontaktní údaje provozovatele do zařízení návštěvníka; web tím
+          neukládá kontakt návštěvníka do vlastní databáze.
         </p>
       </LegalSection>
 
