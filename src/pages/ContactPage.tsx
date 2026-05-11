@@ -45,7 +45,7 @@ export default function ContactPage() {
 
           <div className="relative grid gap-10 md:grid-cols-[auto,1fr] md:items-start">
             <div className="flex justify-center md:justify-start">
-              <div className="relative flex h-32 w-32 items-center justify-center rounded-2xl border border-border/70 bg-card/80 sm:h-40 sm:w-40">
+              <div className="relative flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
                 <FKMonogram className="h-24 w-24 sm:h-28 sm:w-28" title="FK" />
               </div>
             </div>

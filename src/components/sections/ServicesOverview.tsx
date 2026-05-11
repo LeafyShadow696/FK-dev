@@ -13,7 +13,7 @@ export function ServicesOverview() {
             Co pro vás dokážu <span className="text-gradient-brand">vytvořit</span>
           </>
         }
-        description="Kompletní spektrum technických služeb pro firmy i jednotlivce — od webových aplikací přes automatizaci až po cloudové systémy."
+        description="Praktické technické výstupy pro web, provoz a automatizaci. Od první konzultace po nasazené řešení, které má jasný účel."
       />
 
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

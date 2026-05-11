@@ -213,7 +213,7 @@ function ConsentDialog({ onClose }: ConsentDialogProps) {
           />
           <ConsentOption
             title="Předvolby"
-            description="Umožní zapamatovat zvolený světlý nebo tmavý režim v tomto prohlížeči."
+            description="Umožní zapamatovat zvolený tmavý, světlý nebo systémový režim v tomto prohlížeči."
             checked={preferences.preferences}
             onChange={(checked) =>
               setPreferences((current) => ({

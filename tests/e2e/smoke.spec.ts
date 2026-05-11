@@ -97,7 +97,7 @@ test("vCard file exposes public contact details", async ({ request }) => {
   expect(vcard).toContain("ORG:TopBot PwnZ™")
   expect(vcard).toContain("EMAIL;TYPE=INTERNET,WORK:FandaKalasek@icloud.com")
   expect(vcard).toContain("TEL;TYPE=CELL,VOICE:+420722426195")
-  expect(vcard).toContain("PHOTO;VALUE=URI:https://fkdev.xyz/brand/fk-vcard-logo.jpeg")
+  expect(vcard).toContain("PHOTO;VALUE=URI:https://fkdev.xyz/brand/fk-vcard-logo.png")
 })
 
 test("footer exposes embedded map and map links", async ({ page }) => {
@@ -162,12 +162,12 @@ test("mobile monograms render supplied brand assets", async ({ page }) => {
     expect(item.images).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          src: "/brand/fk-mark-light.png",
+          src: "/brand/fk-mark-light-transparent.png",
           width: 460,
           height: 285,
         }),
         expect.objectContaining({
-          src: "/brand/fk-mark-dark.png",
+          src: "/brand/fk-mark-dark-transparent.png",
           width: 460,
           height: 285,
         }),
@@ -206,6 +206,40 @@ test("theme toggle persists the selected color mode", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("theme")))
     .toBe("light")
+
+  await page
+    .getByRole("button", { name: "Použít systémový režim" })
+    .first()
+    .click()
+
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("theme")))
+    .toBe("system")
+})
+
+test("dark mode is the default color mode", async ({ page }) => {
+  await page.goto("/")
+
+  await expect(page.locator("html")).toHaveClass(/dark/)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#0a0a0c",
+  )
+})
+
+test("business profile logo exports are available", async ({ request }) => {
+  const files = [
+    "/brand/fk-business-logo-google-720.png",
+    "/brand/fk-business-logo-google-720-white.png",
+    "/brand/fk-business-logo-apple-1024.png",
+    "/brand/fk-business-logo-apple-1024-dark.png",
+  ]
+
+  for (const file of files) {
+    const response = await request.get(file)
+    expect(response.status()).toBe(200)
+    expect(response.headers()["content-type"]).toContain("image/png")
+  }
 })
 
 test("cookie preferences can be saved and reopened", async ({ page }) => {

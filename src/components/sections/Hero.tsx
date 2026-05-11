@@ -33,14 +33,13 @@ export function Hero() {
           </p>
 
           <p className="mt-8 max-w-2xl text-pretty text-base leading-relaxed text-foreground/90 sm:text-lg">
-            Stavím menším firmám a podnikatelům weby, interní nástroje a
-            automatizace, které šetří čas, zjednodušují provoz a dají se
-            dlouhodobě udržovat.
+            Navrhuji a stavím weby, PWA, interní nástroje a automatizace pro
+            podnikatele a menší firmy, které potřebují jasný výstup, rychlé
+            spuštění a řešení použitelné i po předání.
           </p>
           <p className="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {business.shortDescription} Pokud máte nápad, ruční proces nebo
-            nejasné technické rozhodnutí, pomůžu z něj udělat konkrétní další
-            krok.
+            Pomohu vám převést nápad, nefunkční proces nebo technickou nejistotu
+            do konkrétního plánu, priorit a prvního funkčního kroku.
           </p>
 
           <div className="mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">

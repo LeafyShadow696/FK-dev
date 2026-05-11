@@ -25,7 +25,7 @@ export const services: Service[] = [
     id: "web-pwa",
     title: "Webové aplikace & PWA",
     description:
-      "Návrh a vývoj moderních webových aplikací, responzivních rozhraní a PWA řešení připravených pro praktické používání.",
+      "Rychlé, přehledné a responzivní weby nebo PWA, které návštěvníka dovedou k jasnému dalšímu kroku.",
     when:
       "Hodí se, když potřebujete víc než statickou vizitku: rezervační rozhraní, klientskou zónu, interní nástroj nebo web, který má jasně vést k poptávce.",
     output:
@@ -38,7 +38,7 @@ export const services: Service[] = [
     id: "automation",
     title: "Python automatizace",
     description:
-      "Automatizace opakovaných procesů, práce s daty, skripty, interní nástroje a optimalizace workflow.",
+      "Automatizace ruční práce, datových exportů, kontrol, skriptů a interních workflow, kde se zbytečně ztrácí čas.",
     when:
       "Hodí se, když ručně přepisujete data, exportujete tabulky, kontrolujete soubory nebo pravidelně děláte stejný technický úkon.",
     output:
@@ -51,7 +51,7 @@ export const services: Service[] = [
     id: "api",
     title: "API integrace",
     description:
-      "Propojování systémů, externích služeb, webových aplikací a podnikových nástrojů přes API.",
+      "Propojení webu, interních nástrojů a externích služeb tak, aby data nemusela putovat ručně.",
     when:
       "Hodí se, když potřebujete dostat data z jednoho nástroje do druhého, odstranit ruční mezikroky nebo propojit web s externí službou.",
     output:
@@ -64,7 +64,7 @@ export const services: Service[] = [
     id: "cloud",
     title: "Cloud & self-hosted řešení",
     description:
-      "Návrh, nasazení a údržba cloudových nebo self-hosted řešení s důrazem na kontrolu, bezpečnost a dlouhodobou udržitelnost.",
+      "Nasazení, domény, DNS, provozní nastavení a dokumentace pro řešení, která mají běžet spolehlivě.",
     when:
       "Hodí se, když řešíte hosting, doménu, DNS, zálohy, provoz aplikace nebo rozhodnutí, co má běžet v cloudu a co pod vlastní kontrolou.",
     output:
@@ -77,7 +77,7 @@ export const services: Service[] = [
     id: "consulting",
     title: "IT konzultace",
     description:
-      "Konzultace technického řešení, výběr vhodných nástrojů, návrh architektury a praktická podpora při digitalizaci.",
+      "Nezávislý technický pohled před investicí, výběrem nástroje, úpravou webu nebo zadáním vývoje.",
     when:
       "Hodí se, když potřebujete nezávislý technický pohled před investicí, úpravou webu, výběrem nástroje nebo zadáním vývoje.",
     output:
@@ -90,7 +90,7 @@ export const services: Service[] = [
     id: "hosting",
     title: "Hosting, data & webové portály",
     description:
-      "Technická příprava webových projektů, práce s daty, hostingové workflow a provoz webových portálů.",
+      "Technické zázemí pro webové projekty, datové struktury, importy, exporty a jednoduché portálové řešení.",
     when:
       "Hodí se, když potřebujete dát do pořádku provoz webu, strukturu dat, exporty, jednoduchý portál nebo technické zázemí projektu.",
     output:

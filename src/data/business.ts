@@ -47,11 +47,11 @@ export const business = {
       "https://www.google.com/maps/search/?api=1&query=Da%C5%88kovice%209%2C%20592%2003%20Da%C5%88kovice%2C%20%C4%8Cesko",
   },
   description:
-    "František Kalášek / TopBot PwnZ™ se zaměřuje na vývoj webových aplikací, PWA řešení, automatizací, API integrací, cloudových a self-hosted systémů a technologických konzultací. Cílem je vytvářet funkční, profesionální a dlouhodobě udržitelná digitální řešení.",
+    "František Kalášek / TopBot PwnZ™ navrhuje a realizuje webové aplikace, PWA, automatizace, API integrace, cloudová a self-hosted řešení a technologické konzultace. Důraz je na praktický výsledek, srozumitelný postup, provozní stabilitu a dlouhodobou udržitelnost.",
   shortDescription:
-    "Prémiová tvorba webových aplikací, PWA řešení, automatizací, API integrací a moderních digitálních systémů.",
+    "Webové aplikace, PWA, automatizace, API integrace a technická řešení pro srozumitelnější provoz firmy.",
   supportingText:
-    "Spojuji technické řešení, praktické podnikání a moderní digitální nástroje do funkčních systémů připravených pro dlouhodobé používání.",
+    "Spojuji technický návrh, praktický provoz a moderní digitální nástroje do řešení, která mají jasný účel a dají se dál rozvíjet.",
   focus: [
     "vývoj webových aplikací",
     "PWA řešení",

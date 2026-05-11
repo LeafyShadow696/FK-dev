@@ -8,7 +8,7 @@ Robots policy: https://fkdev.xyz/robots.txt
 
 ## Identity
 
-Frantisek Kalasek / TopBot PwnZ is a Czech freelance technology brand focused on practical digital systems, web applications, PWA solutions, automation, API integrations, cloud and self-hosted systems, and technology consulting.
+Frantisek Kalasek / TopBot PwnZ is a Czech freelance technology brand focused on practical digital systems, web applications, PWA solutions, automation, API integrations, cloud and self-hosted systems, and technology consulting. The work emphasizes clear scope, practical delivery, maintainable operation, and a direct path from the first idea to a usable technical output.
 
 Business ID: 23628588
 Contact e-mail: FandaKalasek@icloud.com

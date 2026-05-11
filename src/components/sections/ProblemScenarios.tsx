@@ -67,8 +67,8 @@ export function ProblemScenarios({ compact = false }: ProblemScenariosProps) {
         }
         description={
           compact
-            ? "Krátký přehled situací, ve kterých dává smysl ozvat se. Detailnější příklady jsou na samostatné stránce."
-            : "Nemusíte mít hotové zadání. Stačí problém, opakovaná ruční práce nebo nápad, který potřebuje technicky uchopit."
+            ? "Nejčastější situace, kdy má smysl udělat z problému konkrétní technické řešení."
+            : "Nemusíte mít hotové zadání. Stačí popsat problém, opakovanou ruční práci nebo výsledek, ke kterému se chcete dostat."
         }
       />
 

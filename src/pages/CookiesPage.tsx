@@ -56,7 +56,8 @@ export default function CookiesPage() {
         <ul>
           <li>technické cookies souhlas nevyžadují,</li>
           <li>
-            uložení předvolby světlého nebo tmavého režimu je volitelné a
+            uložení předvolby tmavého, světlého nebo systémového režimu je
+            volitelné a
             probíhá pouze při povolení kategorie předvoleb,
           </li>
           <li>
@@ -82,7 +83,7 @@ export default function CookiesPage() {
         <p>
           Web používá <strong>localStorage</strong> pro uložení samotné volby
           souhlasu. Pokud návštěvník povolí předvolby, může se do
-          localStorage uložit také zvolený světlý nebo tmavý režim. Web
+          localStorage uložit také zvolený tmavý, světlý nebo systémový režim. Web
           nepoužívá localStorage ani sessionStorage pro ukládání uživatelských
           profilů, přihlášení nebo zpráv z kontaktu.
         </p>

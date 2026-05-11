@@ -16,7 +16,7 @@ export function BusinessCard() {
             Pojďme to <span className="text-gradient-brand">probrat</span>
           </>
         }
-        description="Premium business card — všechny kontaktní údaje na jednom místě. Stačí kliknout na e-mail nebo telefon."
+        description="Rychlý kontakt bez formuláře. Ozvěte se e-mailem nebo telefonicky a pošlete stručně, co potřebujete vyřešit."
         align="center"
       />
 
@@ -39,7 +39,7 @@ export function BusinessCard() {
 
           <div className="relative flex flex-col items-center gap-8 sm:flex-row sm:items-start sm:gap-10">
             <div className="flex flex-none items-center justify-center">
-              <div className="relative flex h-28 w-28 items-center justify-center rounded-2xl border border-border/70 bg-card/80 sm:h-32 sm:w-32">
+              <div className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
                 <FKMonogram className="h-20 w-20 sm:h-24 sm:w-24" title="FK" />
               </div>
             </div>
