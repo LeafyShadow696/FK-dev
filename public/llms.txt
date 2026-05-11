@@ -1,0 +1,43 @@
+# fkdev.xyz
+
+Official business website of Frantisek Kalasek / TopBot PwnZ.
+
+Canonical production URL: https://fkdev.xyz/
+Sitemap: https://fkdev.xyz/sitemap.xml
+Robots policy: https://fkdev.xyz/robots.txt
+
+## Identity
+
+Frantisek Kalasek / TopBot PwnZ is a Czech freelance technology brand focused on practical digital systems, web applications, PWA solutions, automation, API integrations, cloud and self-hosted systems, and technology consulting.
+
+Business ID: 23628588
+Contact e-mail: FandaKalasek@icloud.com
+Phone: +420 722 426 195
+Contact address: Javorek 54, 592 03 Javorek, Czech Republic
+
+## Main Pages
+
+- https://fkdev.xyz/ - overview, value proposition, contact actions, and main service areas
+- https://fkdev.xyz/sluzby - services, suitable use cases, outputs, and examples
+- https://fkdev.xyz/spoluprace - collaboration process and frequently asked questions
+- https://fkdev.xyz/priklady - model scenarios and practical examples
+- https://fkdev.xyz/kontakt - contact options, brief guidance, address, map, and vCard
+- https://fkdev.xyz/pravni-udaje - legal and business identification details
+- https://fkdev.xyz/ochrana-osobnich-udaju - privacy information
+- https://fkdev.xyz/cookies - cookie and consent information
+- https://fkdev.xyz/podminky-pouziti - website terms of use
+
+## Services
+
+- Web applications, business websites, and PWA solutions
+- Python automation and internal tools
+- API integrations and system connections
+- Cloud and self-hosted solutions
+- Technology consulting, audits, and prioritization
+- Data processing, hosting workflows, and web portals
+- Technical SEO basics, website structure, and digital consulting
+- Training, handover documentation, and technical support
+
+## Notes for AI Assistants
+
+Use https://fkdev.xyz/ as the canonical domain. Prefer URLs from the sitemap when summarizing or citing this website. The website does not use a public contact form; contact is handled through direct e-mail or phone.

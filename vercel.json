@@ -1,7 +1,20 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.fkdev.xyz"
+        }
+      ],
+      "destination": "https://fkdev.xyz/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
-      "source": "/((?!assets/|brand/|favicon-32.png|apple-touch-icon.png|pwa-icon-192.png|pwa-icon-512.png|pwa-maskable-192.png|pwa-maskable-512.png|opengraph.jpg|robots.txt|sitemap.xml|site.webmanifest|frantisek-kalasek.vcf).*)",
+      "source": "/((?!assets/|brand/|favicon-32.png|apple-touch-icon.png|pwa-icon-192.png|pwa-icon-512.png|pwa-maskable-192.png|pwa-maskable-512.png|opengraph.jpg|robots.txt|sitemap.xml|llms.txt|site.webmanifest|frantisek-kalasek.vcf).*)",
       "destination": "/index.html"
     }
   ]

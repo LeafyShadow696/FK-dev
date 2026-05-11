@@ -250,6 +250,10 @@ test("home page exposes production SEO metadata", async ({ page }) => {
     "href",
     "https://fkdev.xyz/",
   )
+  await expect(page.locator('link[rel="alternate"][type="text/plain"]')).toHaveAttribute(
+    "href",
+    "/llms.txt",
+  )
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
     "https://fkdev.xyz/opengraph.jpg",
@@ -259,6 +263,17 @@ test("home page exposes production SEO metadata", async ({ page }) => {
     .evaluate((script) => script.textContent ?? "")
   expect(jsonLd).toContain("ProfessionalService")
   expect(jsonLd).toContain("https://schema.org")
+})
+
+test("AI summary is available as static text", async ({ request }) => {
+  const response = await request.get("/llms.txt")
+  const text = await response.text()
+
+  expect(response.status()).toBe(200)
+  expect(response.headers()["content-type"]).toContain("text/plain")
+  expect(text).toContain("Canonical production URL: https://fkdev.xyz/")
+  expect(text).toContain("https://fkdev.xyz/sitemap.xml")
+  expect(text).toContain("Web applications")
 })
 
 test("web manifest uses installable png icons", async ({ page, request }) => {
