@@ -9,6 +9,7 @@ const routes = [
   { path: "/cookies", h1: "Zásady používání cookies" },
   { path: "/ochrana-osobnich-udaju", h1: "Ochrana osobních údajů" },
   { path: "/podminky-pouziti", h1: "Podmínky použití webu" },
+  { path: "/portal", h1: "Admin" },
 ]
 
 test.describe("production routes", () => {

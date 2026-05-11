@@ -117,11 +117,11 @@
       #6d28d9 78%,
       #f97316 100%
     );
-    background-size: 260% 260%;
+    background-size: 300% 300%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: signature-gradient-shift 12s ease-in-out infinite;
+    animation: signature-gradient-shift 36s ease-in-out infinite;
   }
 
   .border-gradient-brand {
@@ -176,9 +176,10 @@
 
   .brand-script {
     font-family: var(--font-brand);
-    font-weight: 300;
+    font-weight: 200;
     letter-spacing: 0;
-    line-height: 1.08;
+    line-height: 1.14;
+    text-shadow: 0 0.04em 0.16em hsl(var(--foreground) / 0.08);
   }
 }
 

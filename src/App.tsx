@@ -15,6 +15,7 @@ import LegalPage from "@/pages/LegalPage"
 import PrivacyPage from "@/pages/PrivacyPage"
 import CookiesPage from "@/pages/CookiesPage"
 import TermsPage from "@/pages/TermsPage"
+import PortalPage from "@/pages/PortalPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
 function VercelInsights() {
@@ -60,6 +61,7 @@ function AppContent() {
           <Route path="/ochrana-osobnich-udaju" component={PrivacyPage} />
           <Route path="/cookies" component={CookiesPage} />
           <Route path="/podminky-pouziti" component={TermsPage} />
+          <Route path="/portal" component={PortalPage} />
           <Route component={NotFoundPage} />
         </Switch>
       </div>

@@ -65,12 +65,15 @@ npx.cmd --yes vercel@latest deploy --prod
   - `/spoluprace`
   - `/priklady`
   - `/kontakt`
+  - `/portal` - private admin portal entrypoint
   - legal/privacy/cookies/terms pages
+- `api/admin/[action].ts` - Vercel serverless admin API for login, session, logout, and overview.
 - `src/components/layout/` - header, footer, map, theme toggle.
 - `src/components/sections/` - landing page and content sections.
 - `src/components/privacy/ConsentProvider.tsx` - cookie/consent state.
 - `src/components/three/` - lazy-loaded Three.js hero background.
 - `src/data/business.ts` - canonical public business identity and contact data.
+- `src/data/adminPortal.ts` - admin portal integration labels and principles.
 - `src/data/services.ts` - service content model.
 - `src/utils/seo.ts` - runtime SEO metadata.
 - `src/utils/structuredData.ts` - schema.org structured data.
@@ -101,8 +104,8 @@ Do not invent client references, certifications, opening hours, pricing, or lega
 - Theme toggle supports `dark`, `light`, and `system`.
 - Persisted theme preference is optional and depends on consent preferences.
 - Icons should be simple monochrome line icons unless they are part of a primary CTA or brand asset.
-- Brand name/signature uses the handwriting-style `Playwrite CZ` font.
-- The signature gradient should remain animated from orange through midnight blue to deep purple, with reduced-motion support.
+- Brand name/signature uses the handwriting-style `Playwrite CZ` font with a light, monogram-adjacent feel.
+- The signature gradient should remain subtle and slow, animated from orange through midnight blue to deep purple, with reduced-motion support.
 - The site should feel minimal, professional, Apple-native-like, and easy to scan.
 - Do not add marketing hero fluff or large generic landing page sections.
 - Do not put logos inside the Three.js hero background.
@@ -154,7 +157,7 @@ Maintain:
 - `public/llms.txt`
 - vCard file
 
-When adding major pages, add them to routing, sitemap, tests, and AI summary if they are public.
+When adding major public pages, add them to routing, sitemap, tests, and AI summary. Private/admin routes should not be added to the sitemap and should be disallowed in `robots.txt`.
 
 ## Testing Expectations
 
@@ -194,21 +197,31 @@ If changing Vercel domain behavior, verify:
 - `https://www.fkdev.xyz/` returns a permanent redirect to `https://fkdev.xyz/`
 - `https://fkdev.xyz/llms.txt` returns `200 text/plain`
 
-## Future Admin Portal Direction
+## Admin Portal
 
-The user plans a future `/portal` area for admin access. This is not implemented yet.
+The `/portal` route is the private admin entrypoint. It currently provides:
 
-Do not add a fake admin portal without explicit approval. When this work starts, discuss architecture first:
+- admin login UI
+- Vercel serverless API under `/api/admin/[action]`
+- HttpOnly cookie session
+- environment readiness checks
+- integration status placeholders for Vercel, GitHub, Render, Railway, database, and cloud storage
 
-- authentication and admin-only access
-- backend runtime choice
-- database/storage choice
-- Vercel integration
-- GitHub integration
-- possible Render or Railway API integration
-- cloud storage for uploaded assets
-- audit logging and secrets handling
-- separation between public landing page and private admin routes
+Required server-side env vars before production admin login can work:
+
+- `FK_ADMIN_ACCESS_KEY` - long private admin login key, minimum 16 characters.
+- `FK_ADMIN_SESSION_SECRET` - long random HMAC secret, minimum 32 characters.
+
+Future provider integration env vars:
+
+- `VERCEL_API_TOKEN`
+- `GITHUB_TOKEN`
+- `RENDER_API_KEY`
+- `RAILWAY_API_TOKEN`
+- `DATABASE_URL`
+- `FK_STORAGE_CONNECTION`
+
+Keep this route private. Do not expose dashboard data without a verified server-side session. Do not add provider tokens to frontend code. Do not add `/portal` to the public sitemap.
 
 Do not commit secrets, API keys, tokens, private credentials, or personal session artifacts.
 
@@ -230,4 +243,5 @@ Do not commit secrets, API keys, tokens, private credentials, or personal sessio
 - Do not revert unrelated user changes.
 - Keep git history intentional.
 - Run checks before committing.
+- Update `AGENTS.md` and related agent instruction files when architecture, routes, env vars, deployment behavior, or conventions change.
 - After deployment, summarize exact commit, production URL, and verification results.

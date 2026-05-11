@@ -1,10 +1,16 @@
 User-agent: *
 Allow: /
+Disallow: /portal
+Disallow: /api/admin/
 
 User-agent: GPTBot
 Allow: /
+Disallow: /portal
+Disallow: /api/admin/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /portal
+Disallow: /api/admin/
 
 Sitemap: https://fkdev.xyz/sitemap.xml
