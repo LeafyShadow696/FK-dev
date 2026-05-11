@@ -29,7 +29,7 @@ export function Wordmark({
     >
       <span
         className={cn(
-          "font-display font-semibold tracking-tight text-gradient-brand",
+          "brand-script text-gradient-brand",
           s.name,
         )}
       >

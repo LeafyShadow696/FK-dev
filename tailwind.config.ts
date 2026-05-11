@@ -26,6 +26,7 @@ export default {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         serif: ["var(--font-serif)", "ui-serif", "Georgia", "serif"],
         display: ["var(--font-display)", "ui-serif", "Georgia", "serif"],
+        brand: ["var(--font-brand)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         DEFAULT: "var(--radius)",

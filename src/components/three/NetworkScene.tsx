@@ -6,9 +6,20 @@ interface NetworkProps {
   nodeCount?: number
   spread?: number
   className?: string
+  lineColor?: string
+  nodeColor?: string
+  lineOpacity?: number
+  nodeOpacity?: number
 }
 
-function NetworkNodes({ nodeCount = 60, spread = 6 }: NetworkProps) {
+function NetworkNodes({
+  nodeCount = 60,
+  spread = 6,
+  lineColor = "#a78bfa",
+  nodeColor = "#e879f9",
+  lineOpacity = 0.12,
+  nodeOpacity = 0.55,
+}: NetworkProps) {
   const groupRef = useRef<THREE.Group>(null)
 
   // Stable pseudo-random positions
@@ -81,19 +92,19 @@ function NetworkNodes({ nodeCount = 60, spread = 6 }: NetworkProps) {
     <group ref={groupRef}>
       <lineSegments geometry={lineGeometry}>
         <lineBasicMaterial
-          color={new THREE.Color("#a78bfa")}
+          color={new THREE.Color(lineColor)}
           transparent
-          opacity={0.12}
+          opacity={lineOpacity}
           depthWrite={false}
         />
       </lineSegments>
       <points geometry={nodeGeometry}>
         <pointsMaterial
-          color={new THREE.Color("#e879f9")}
+          color={new THREE.Color(nodeColor)}
           size={0.04}
           sizeAttenuation
           transparent
-          opacity={0.55}
+          opacity={nodeOpacity}
           depthWrite={false}
         />
       </points>
@@ -105,6 +116,10 @@ export function NetworkScene({
   nodeCount = 60,
   spread = 6,
   className,
+  lineColor,
+  nodeColor,
+  lineOpacity,
+  nodeOpacity,
 }: NetworkProps) {
   return (
     <div className={className} aria-hidden="true">
@@ -114,7 +129,14 @@ export function NetworkScene({
         gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
         style={{ background: "transparent" }}
       >
-        <NetworkNodes nodeCount={nodeCount} spread={spread} />
+        <NetworkNodes
+          nodeCount={nodeCount}
+          spread={spread}
+          lineColor={lineColor}
+          nodeColor={nodeColor}
+          lineOpacity={lineOpacity}
+          nodeOpacity={nodeOpacity}
+        />
       </Canvas>
     </div>
   )

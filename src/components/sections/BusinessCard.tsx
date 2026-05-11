@@ -46,14 +46,14 @@ export function BusinessCard() {
 
             <div className="flex flex-col gap-4 text-center sm:text-left">
               <div>
-                <div className="font-display text-3xl font-semibold tracking-tight text-gradient-brand sm:text-4xl">
+                <div className="brand-script text-5xl text-gradient-brand sm:text-6xl">
                   {business.legalName}
                 </div>
                 <div className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   {business.brandName}
                 </div>
               </div>
-              <p className="font-serif text-base italic text-muted-foreground sm:text-lg">
+              <p className="text-base italic text-muted-foreground sm:text-lg">
                 &ldquo;{business.motto}&rdquo;
               </p>
 

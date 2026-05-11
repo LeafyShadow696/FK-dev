@@ -28,6 +28,7 @@ test.describe("production routes", () => {
 test("home page has primary contact actions", async ({ page }) => {
   await page.goto("/")
 
+  await expect(page.locator("section").first().locator('[data-testid="fk-monogram"]')).toHaveCount(0)
   await expect(page.getByText("Typické situace", { exact: true })).toBeVisible()
   await expect(page.getByText("Ruční práce bere čas")).toBeVisible()
   await expect(page.getByRole("link", { name: "Další typické situace" })).toBeVisible()
@@ -96,7 +97,7 @@ test("vCard file exposes public contact details", async ({ request }) => {
   expect(vcard).toContain("ORG:TopBot PwnZ™")
   expect(vcard).toContain("EMAIL;TYPE=INTERNET,WORK:FandaKalasek@icloud.com")
   expect(vcard).toContain("TEL;TYPE=CELL,VOICE:+420722426195")
-  expect(vcard).toContain("PHOTO;VALUE=URI:https://fkdev.xyz/pwa-icon-512.png")
+  expect(vcard).toContain("PHOTO;VALUE=URI:https://fkdev.xyz/brand/fk-vcard-logo.jpeg")
 })
 
 test("footer exposes embedded map and map links", async ({ page }) => {
@@ -125,48 +126,54 @@ test("mobile navigation opens", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Kontakt" }).last()).toBeVisible()
 })
 
-test("mobile monograms render without gradient-url dependency", async ({ page }) => {
+test("mobile monograms render supplied brand assets", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/")
 
   await expect(page.locator('header [data-testid="fk-monogram"]')).toBeVisible()
   await expect(page.locator('#vizitka [data-testid="fk-monogram"]')).toBeVisible()
 
-  const monogramChecks = await page.evaluate(() => {
-    const svgs = [
+  const logoChecks = await page.evaluate(() => {
+    const logos = [
       document.querySelector('header [data-testid="fk-monogram"]'),
       document.querySelector('#vizitka [data-testid="fk-monogram"]'),
-    ].filter((svg): svg is Element => svg instanceof Element)
+    ].filter((logo): logo is Element => logo instanceof Element)
 
-    return svgs.map((svg) => {
-      const gradients = svg.querySelectorAll("linearGradient").length
-      const strokes = Array.from(svg.querySelectorAll("path")).map((path) =>
-        path.getAttribute("stroke") ?? "",
-      )
-      const rect = svg.getBoundingClientRect()
+    return logos.map((logo) => {
+      const rect = logo.getBoundingClientRect()
+      const images = Array.from(logo.querySelectorAll("img")).map((img) => ({
+        src: img.getAttribute("src"),
+        display: window.getComputedStyle(img).display,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      }))
 
       return {
-        gradients,
-        strokes,
+        images,
         visibleBox: rect.width > 0 && rect.height > 0,
       }
     })
   })
 
-  expect(monogramChecks).toHaveLength(2)
+  expect(logoChecks).toHaveLength(2)
 
-  for (const item of monogramChecks) {
+  for (const item of logoChecks) {
     expect(item.visibleBox).toBe(true)
-    expect(item.gradients).toBe(0)
-    expect(item.strokes).toEqual([
-      "#f25aa6",
-      "#b05ee7",
-      "#8c5add",
-      "#7a78e8",
-      "#5aa6e8",
-      "#3ed9cf",
-    ])
-    expect(item.strokes.some((stroke) => stroke.includes("url("))).toBe(false)
+    expect(item.images).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          src: "/brand/fk-mark-light.png",
+          width: 460,
+          height: 285,
+        }),
+        expect.objectContaining({
+          src: "/brand/fk-mark-dark.png",
+          width: 460,
+          height: 285,
+        }),
+      ]),
+    )
+    expect(item.images.filter((image) => image.display !== "none")).toHaveLength(1)
   }
 })
 

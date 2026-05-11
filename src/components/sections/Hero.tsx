@@ -1,6 +1,5 @@
 import { motion } from "framer-motion"
 import { ArrowRight, Mail, Phone } from "lucide-react"
-import { FKMonogram } from "@/components/brand/FKMonogram"
 import {
   ButtonLink,
   ButtonRouterLink,
@@ -20,23 +19,16 @@ export function Hero() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="flex flex-col items-center text-center"
         >
-          <div className="mb-8 flex items-center justify-center">
-            <div className="relative">
-              <div className="absolute inset-0 -z-10 rounded-full bg-brand-gradient-soft blur-2xl" />
-              <FKMonogram className="h-24 w-24 sm:h-28 sm:w-28" title="FK monogram" />
-            </div>
-          </div>
-
           <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-gradient" />
             {business.brandName}
           </span>
 
-          <h1 className="font-display text-5xl font-semibold tracking-tight text-balance sm:text-6xl md:text-7xl">
+          <h1 className="brand-script text-6xl text-balance sm:text-7xl md:text-8xl">
             <span className="text-gradient-brand">{business.legalName}</span>
           </h1>
 
-          <p className="mt-5 max-w-2xl font-serif text-lg italic text-muted-foreground sm:text-xl">
+          <p className="mt-5 max-w-2xl text-lg italic text-muted-foreground sm:text-xl">
             &ldquo;{business.motto}&rdquo;
           </p>
 

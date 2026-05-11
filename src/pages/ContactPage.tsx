@@ -52,13 +52,13 @@ export default function ContactPage() {
 
             <div>
               <div className="text-center md:text-left">
-                <h2 className="font-display text-3xl font-semibold tracking-tight text-gradient-brand sm:text-4xl">
+                <h2 className="brand-script text-5xl text-gradient-brand sm:text-6xl">
                   {business.legalName}
                 </h2>
                 <div className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   {business.brandName}
                 </div>
-                <p className="mt-4 font-serif text-base italic text-muted-foreground sm:text-lg">
+                <p className="mt-4 text-base italic text-muted-foreground sm:text-lg">
                   &ldquo;{business.motto}&rdquo;
                 </p>
               </div>

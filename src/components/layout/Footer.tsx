@@ -35,7 +35,7 @@ export function Footer() {
                 <FKMonogram className="h-7 w-7" title="FK" />
               </span>
               <div className="leading-tight">
-                <div className="font-display text-lg font-semibold tracking-tight text-gradient-brand">
+                <div className="brand-script text-2xl text-gradient-brand">
                   {business.legalName}
                 </div>
                 <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -43,7 +43,7 @@ export function Footer() {
                 </div>
               </div>
             </div>
-            <p className="mt-5 max-w-md font-serif text-base italic leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-md text-base italic leading-relaxed text-muted-foreground">
               &ldquo;{business.motto}&rdquo;
             </p>
             <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
