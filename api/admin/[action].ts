@@ -10,8 +10,30 @@ type IntegrationStatus = {
   description: string
 }
 
+type ProviderSummary = {
+  id: string
+  label: string
+  ok: boolean
+  headline: string
+  detail: string
+  href?: string
+  checkedAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
+}
+
+function getAnySecret(names: string[]) {
+  for (const name of names) {
+    const value = getSecret(name)
+
+    if (value) {
+      return value
+    }
+  }
+
+  return ""
 }
 
 function toBase64Url(input: string | Buffer) {
@@ -112,7 +134,7 @@ function authConfig() {
 }
 
 function integrationStatuses(): IntegrationStatus[] {
-  const hasAnySecret = (names: string[]) => names.some((name) => Boolean(getSecret(name)))
+  const hasAnySecret = (names: string[]) => Boolean(getAnySecret(names))
 
   return [
     {
@@ -172,6 +194,187 @@ function integrationStatuses(): IntegrationStatus[] {
   ]
 }
 
+function formatDateTime(value: string | number | undefined) {
+  if (!value) {
+    return "neznámý čas"
+  }
+
+  const date = typeof value === "number" ? new Date(value) : new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return "neznámý čas"
+  }
+
+  return date.toLocaleString("cs-CZ", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Prague",
+  })
+}
+
+async function fetchJson(url: string, init: RequestInit) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    })
+    const text = await response.text()
+    const data = text ? JSON.parse(text) : null
+
+    return { ok: response.ok, status: response.status, data }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function githubSummary(): Promise<ProviderSummary> {
+  const checkedAt = new Date().toISOString()
+  const token = getAnySecret(["GITHUB_TOKEN", "GITHUB_API_KEY"])
+
+  if (!token) {
+    return {
+      id: "github",
+      label: "GitHub",
+      ok: false,
+      headline: "Token není nastavený",
+      detail: "Chybí serverová proměnná GITHUB_TOKEN nebo GITHUB_API_KEY.",
+      checkedAt,
+    }
+  }
+
+  try {
+    const [repo, commit] = await Promise.all([
+      fetchJson("https://api.github.com/repos/LeafyShadow696/FK-dev", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "fkdev-admin-portal",
+        },
+      }),
+      fetchJson("https://api.github.com/repos/LeafyShadow696/FK-dev/commits/main", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "fkdev-admin-portal",
+        },
+      }),
+    ])
+
+    if (!repo.ok || !commit.ok) {
+      return {
+        id: "github",
+        label: "GitHub",
+        ok: false,
+        headline: "GitHub API nevrátilo platný stav",
+        detail: `Repo status ${repo.status}, commit status ${commit.status}.`,
+        checkedAt,
+      }
+    }
+
+    const commitSha = String(commit.data?.sha ?? "").slice(0, 7)
+    const message = String(commit.data?.commit?.message ?? "").split("\n")[0]
+    const pushedAt = String(repo.data?.pushed_at ?? commit.data?.commit?.committer?.date ?? "")
+
+    return {
+      id: "github",
+      label: "GitHub",
+      ok: true,
+      headline: `${repo.data?.full_name ?? "LeafyShadow696/FK-dev"} / main`,
+      detail: `${commitSha} · ${message || "poslední commit"} · ${formatDateTime(pushedAt)}`,
+      href: String(repo.data?.html_url ?? "https://github.com/LeafyShadow696/FK-dev"),
+      checkedAt,
+    }
+  } catch {
+    return {
+      id: "github",
+      label: "GitHub",
+      ok: false,
+      headline: "GitHub API je nedostupné",
+      detail: "Nepodařilo se načíst stav repozitáře v časovém limitu.",
+      checkedAt,
+    }
+  }
+}
+
+async function vercelSummary(): Promise<ProviderSummary> {
+  const checkedAt = new Date().toISOString()
+  const token = getAnySecret(["VERCEL_API_TOKEN", "VERCEL_TOKEN", "VERCEL_API_KEY"])
+  const projectId = getSecret("VERCEL_PROJECT_ID") || "prj_5rwIhFXRqZ0Q0i0tiVGuSPUMVhGn"
+  const teamId = getSecret("VERCEL_TEAM_ID") || "team_Q7P5ptcXkEL5SBpsQ2edIgr3"
+
+  if (!token) {
+    return {
+      id: "vercel",
+      label: "Vercel",
+      ok: false,
+      headline: "Token není nastavený",
+      detail: "Chybí serverová proměnná VERCEL_TOKEN, VERCEL_API_TOKEN nebo VERCEL_API_KEY.",
+      checkedAt,
+    }
+  }
+
+  try {
+    const query = new URLSearchParams({
+      projectId,
+      limit: "1",
+      teamId,
+    })
+    const deployments = await fetchJson(
+      `https://api.vercel.com/v6/deployments?${query.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+
+    if (!deployments.ok) {
+      return {
+        id: "vercel",
+        label: "Vercel",
+        ok: false,
+        headline: "Vercel API nevrátilo platný stav",
+        detail: `Deployments status ${deployments.status}.`,
+        checkedAt,
+      }
+    }
+
+    const deployment = deployments.data?.deployments?.[0]
+    const state = String(deployment?.state ?? "neznámý stav")
+    const url = deployment?.url ? `https://${deployment.url}` : "https://fkdev.xyz"
+
+    return {
+      id: "vercel",
+      label: "Vercel",
+      ok: state === "READY",
+      headline: `Poslední deployment: ${state}`,
+      detail: `${deployment?.name ?? "fk-dev"} · ${formatDateTime(deployment?.createdAt)}`,
+      href: url,
+      checkedAt,
+    }
+  } catch {
+    return {
+      id: "vercel",
+      label: "Vercel",
+      ok: false,
+      headline: "Vercel API je nedostupné",
+      detail: "Nepodařilo se načíst poslední deployment v časovém limitu.",
+      checkedAt,
+    }
+  }
+}
+
+async function providerSummaries() {
+  const [github, vercel] = await Promise.all([githubSummary(), vercelSummary()])
+
+  return [vercel, github]
+}
+
 function isAuthenticated(req: any, sessionSecret: string) {
   const token = parseCookie(req.headers.cookie, SESSION_COOKIE)
 
@@ -187,7 +390,7 @@ function requireAuth(req: any, res: any, sessionSecret: string) {
   return true
 }
 
-export default function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
   const action = String(req.query.action ?? "")
   const config = authConfig()
 
@@ -268,6 +471,8 @@ export default function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
+    const providers = await providerSummaries()
+
     sendJson(res, 200, {
       generatedAt: new Date().toISOString(),
       environment: process.env.VERCEL_ENV ?? "local",
@@ -277,14 +482,14 @@ export default function handler(req: any, res: any) {
         repository: "LeafyShadow696/FK-dev",
       },
       integrations,
+      providers,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
-        "Nastavit produkční admin env proměnné.",
         "Doplnit databázi pro audit log a nastavení portálu.",
-        "Napojit čtení deploymentů z Vercel API.",
-        "Napojit GitHub stav repozitáře a workflow.",
-        "Rozhodnout, zda backend poběží na Vercelu, Renderu nebo Railway.",
+        "Rozšířit GitHub stav o workflow a poslední běhy CI.",
+        "Rozšířit Vercel stav o domény, build logy a Web Analytics.",
+        "Napojit Python backend na Render a připravit perzistentní API.",
       ],
     })
     return

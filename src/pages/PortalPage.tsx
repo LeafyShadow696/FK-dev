@@ -9,6 +9,7 @@ import {
   LogOut,
   Server,
   ShieldCheck,
+  Wifi,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
@@ -33,6 +34,15 @@ type PortalOverview = {
     label: string
     configured: boolean
     description: string
+  }>
+  providers?: Array<{
+    id: string
+    label: string
+    ok: boolean
+    headline: string
+    detail: string
+    href?: string
+    checkedAt: string
   }>
   configuredIntegrations: number
   checklist: string[]
@@ -284,6 +294,7 @@ function PortalDashboard({
     () => new Map(overview.integrations.map((item) => [item.id, item])),
     [overview.integrations],
   )
+  const providers = overview.providers ?? []
 
   return (
     <main className="px-4 py-12 sm:px-6 lg:px-8">
@@ -327,6 +338,52 @@ function PortalDashboard({
             </p>
           </article>
         </div>
+
+        {providers.length > 0 ? (
+          <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+            <div className="flex items-center gap-3">
+              <Wifi className="h-5 w-5 text-foreground/90" aria-hidden />
+              <h2 className="font-display text-xl font-semibold text-foreground">
+                Živý stav providerů
+              </h2>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {providers.map((provider) => (
+                <article
+                  key={provider.id}
+                  className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {provider.label}
+                      </p>
+                      <h3 className="mt-2 font-display text-lg font-semibold text-foreground">
+                        {provider.headline}
+                      </h3>
+                    </div>
+                    <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                      {provider.ok ? "Online" : "Nedostupné"}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {provider.detail}
+                  </p>
+                  {provider.href ? (
+                    <a
+                      href={provider.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      Otevřít detail
+                    </a>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           {portalIntegrations.map((item) => {

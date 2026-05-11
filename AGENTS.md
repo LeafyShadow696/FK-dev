@@ -209,6 +209,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - HttpOnly cookie session
 - environment readiness checks
 - integration status placeholders for Vercel, GitHub, Render, Railway, database, and cloud storage
+- live provider summaries for Vercel deployments and GitHub repository/commit state
 - recommended Python/FastAPI backend architecture summary
 
 Required server-side env vars before production admin login can work:
