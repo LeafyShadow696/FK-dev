@@ -7,10 +7,15 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  Server,
   ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { portalIntegrations, portalPrinciples } from "@/data/adminPortal"
+import {
+  backendRecommendation,
+  portalIntegrations,
+  portalPrinciples,
+} from "@/data/adminPortal"
 import { business } from "@/data/business"
 
 type SessionState = "checking" | "configured" | "ready" | "authenticated"
@@ -338,6 +343,44 @@ function PortalDashboard({
             )
           })}
         </div>
+
+        <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <Server className="h-5 w-5 text-foreground/90" aria-hidden />
+            <h2 className="font-display text-xl font-semibold text-foreground">
+              Doporučená backend architektura
+            </h2>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Runtime</p>
+              <p className="mt-2 font-semibold text-foreground">
+                {backendRecommendation.runtime}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Hosting</p>
+              <p className="mt-2 font-semibold text-foreground">
+                {backendRecommendation.hosting}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Databáze</p>
+              <p className="mt-2 font-semibold text-foreground">
+                {backendRecommendation.database}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Storage</p>
+              <p className="mt-2 font-semibold text-foreground">
+                {backendRecommendation.storage}
+              </p>
+            </div>
+          </div>
+          <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {backendRecommendation.reason}
+          </p>
+        </section>
 
         <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
           <div className="flex items-center gap-3">

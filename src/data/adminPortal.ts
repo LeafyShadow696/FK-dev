@@ -1,11 +1,13 @@
 import {
   Activity,
+  Bot,
   Cloud,
   Database,
   GitBranch,
   HardDrive,
   LockKeyhole,
   Server,
+  Shield,
 } from "lucide-react"
 
 export const portalIntegrations = [
@@ -45,7 +47,29 @@ export const portalIntegrations = [
     icon: HardDrive,
     purpose: "Bezpečné soubory, exporty a asset management.",
   },
+  {
+    id: "ai",
+    label: "AI providers",
+    icon: Bot,
+    purpose: "OpenAI, Gemini a budoucí agentní funkce portálu.",
+  },
+  {
+    id: "tailscale",
+    label: "Tailscale",
+    icon: Shield,
+    purpose: "Privátní síťový přístup pro backend a interní služby.",
+  },
 ] as const
+
+export const backendRecommendation = {
+  runtime: "Python / FastAPI",
+  hosting: "Render Web Service",
+  database: "PostgreSQL",
+  storage:
+    "Vercel Blob pro veřejné assety, S3/R2 kompatibilní storage pro větší privátní soubory",
+  reason:
+    "FastAPI je vhodné pro čitelné typed API, integrace s externími providery, audit logy a delší backend procesy mimo statický frontend.",
+} as const
 
 export const portalPrinciples = [
   {

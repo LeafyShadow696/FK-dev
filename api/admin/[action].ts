@@ -112,17 +112,19 @@ function authConfig() {
 }
 
 function integrationStatuses(): IntegrationStatus[] {
+  const hasAnySecret = (names: string[]) => names.some((name) => Boolean(getSecret(name)))
+
   return [
     {
       id: "vercel",
       label: "Vercel",
-      configured: Boolean(getSecret("VERCEL_API_TOKEN")),
+      configured: hasAnySecret(["VERCEL_API_TOKEN", "VERCEL_TOKEN", "VERCEL_API_KEY"]),
       description: "Deploymenty, domény, build logy a produkční stav.",
     },
     {
       id: "github",
       label: "GitHub",
-      configured: Boolean(getSecret("GITHUB_TOKEN")),
+      configured: hasAnySecret(["GITHUB_TOKEN", "GITHUB_API_KEY"]),
       description: "Repozitář, poslední commity, issues a budoucí release workflow.",
     },
     {
@@ -134,7 +136,7 @@ function integrationStatuses(): IntegrationStatus[] {
     {
       id: "railway",
       label: "Railway",
-      configured: Boolean(getSecret("RAILWAY_API_TOKEN")),
+      configured: hasAnySecret(["RAILWAY_API_TOKEN", "RAILWAY_API_KEY"]),
       description: "Alternativní backend runtime a databázové služby.",
     },
     {
@@ -148,6 +150,24 @@ function integrationStatuses(): IntegrationStatus[] {
       label: "Databáze",
       configured: Boolean(getSecret("DATABASE_URL")),
       description: "Perzistentní data portálu, audit log a nastavení.",
+    },
+    {
+      id: "ai",
+      label: "AI providers",
+      configured: hasAnySecret(["OPENAI_API_KEY", "GEMINI_API_KEY"]),
+      description: "Budoucí AI asistenti, sumarizace, interní automatizace a agentní funkce.",
+    },
+    {
+      id: "tailscale",
+      label: "Tailscale",
+      configured: hasAnySecret([
+        "TAILSCALE_API_KEY",
+        "TAILSCALE_AUTH_TOKEN",
+        "TAILSCALE_LOGIN_ID",
+        "TAILSCALE_LOGIN_SECRET",
+        "TAILNET_UNIQUE_ID",
+      ]),
+      description: "Soukromé síťové napojení pro interní služby a bezpečný backend přístup.",
     },
   ]
 }

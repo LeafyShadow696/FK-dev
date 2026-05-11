@@ -24,6 +24,7 @@ The site presents practical services around web applications, PWA solutions, aut
 - Vercel Analytics and Speed Insights
 - Playwright e2e tests
 - Production deployment on Vercel
+- Python FastAPI backend scaffold under `backend/`
 
 ## Important Commands
 
@@ -68,6 +69,8 @@ npx.cmd --yes vercel@latest deploy --prod
   - `/portal` - private admin portal entrypoint
   - legal/privacy/cookies/terms pages
 - `api/admin/[action].ts` - Vercel serverless admin API for login, session, logout, and overview.
+- `backend/` - Python FastAPI admin API scaffold intended for Render or another backend runtime.
+- `docs/admin-portal-architecture.md` - backend, database, storage, and secret-handling plan.
 - `src/components/layout/` - header, footer, map, theme toggle.
 - `src/components/sections/` - landing page and content sections.
 - `src/components/privacy/ConsentProvider.tsx` - cookie/consent state.
@@ -206,6 +209,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - HttpOnly cookie session
 - environment readiness checks
 - integration status placeholders for Vercel, GitHub, Render, Railway, database, and cloud storage
+- recommended Python/FastAPI backend architecture summary
 
 Required server-side env vars before production admin login can work:
 
@@ -215,13 +219,26 @@ Required server-side env vars before production admin login can work:
 Future provider integration env vars:
 
 - `VERCEL_API_TOKEN`
+- `VERCEL_TOKEN`
+- `VERCEL_API_KEY`
 - `GITHUB_TOKEN`
+- `GITHUB_API_KEY`
 - `RENDER_API_KEY`
 - `RAILWAY_API_TOKEN`
+- `RAILWAY_API_KEY`
 - `DATABASE_URL`
 - `FK_STORAGE_CONNECTION`
+- `OPENAI_API_KEY`
+- `GEMINI_API_KEY`
+- `TAILNET_UNIQUE_ID`
+- `TAILSCALE_API_KEY`
+- `TAILSCALE_AUTH_TOKEN`
+- `TAILSCALE_LOGIN_ID`
+- `TAILSCALE_LOGIN_SECRET`
 
 Keep this route private. Do not expose dashboard data without a verified server-side session. Do not add provider tokens to frontend code. Do not add `/portal` to the public sitemap.
+
+The recommended backend direction is Python / FastAPI on Render, PostgreSQL for persistent data and audit logs, and object storage for non-secret uploaded files. Treat env files as secret inputs only; do not commit or serve them.
 
 Do not commit secrets, API keys, tokens, private credentials, or personal session artifacts.
 
