@@ -15,6 +15,10 @@ next.user-config.*
 !.env.example
 !backend/.env.example
 backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
 
 # Common ignores
 node_modules
