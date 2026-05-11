@@ -83,7 +83,7 @@ function CaseRow({ label, text }: { label: string; text: string }) {
   return (
     <div className="flex gap-3">
       <CheckCircle2
-        className="mt-0.5 h-4 w-4 flex-none text-brand-teal"
+        className="mt-0.5 h-4 w-4 flex-none text-foreground/90"
         aria-hidden
       />
       <p className="text-sm leading-relaxed text-muted-foreground">

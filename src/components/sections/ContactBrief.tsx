@@ -69,7 +69,7 @@ export function ContactBrief() {
             {briefItems.map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <Check
-                  className="mt-0.5 h-5 w-5 flex-none text-brand-teal"
+                  className="mt-0.5 h-5 w-5 flex-none text-foreground/90"
                   aria-hidden
                 />
                 <span className="text-sm leading-relaxed text-foreground/90 sm:text-base">

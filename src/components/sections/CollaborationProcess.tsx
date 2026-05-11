@@ -55,7 +55,7 @@ export function CollaborationProcess() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border/70 bg-card/60">
-                  <Icon className="h-5 w-5 text-brand-violet" aria-hidden />
+                  <Icon className="h-5 w-5 text-foreground/90" aria-hidden />
                 </span>
               </div>
               <h3 className="font-display text-xl font-semibold text-foreground">

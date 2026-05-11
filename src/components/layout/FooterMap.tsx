@@ -11,7 +11,7 @@ export function FooterMap() {
       <div className="grid gap-0 lg:grid-cols-[0.85fr,1.15fr]">
         <div className="p-6 sm:p-8">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-card/60">
-            <MapPin className="h-5 w-5 text-brand-teal" aria-hidden />
+            <MapPin className="h-5 w-5 text-foreground/90" aria-hidden />
           </div>
           <h2
             id="footer-map-title"

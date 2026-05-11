@@ -49,7 +49,7 @@ export function Header() {
             <FKMonogram className="h-6 w-6" title="FK" />
           </span>
           <span className="flex min-w-0 flex-col leading-tight">
-            <span className="brand-script truncate text-xl text-gradient-brand sm:text-2xl">
+            <span className="brand-script signature-gradient truncate text-xl sm:text-2xl">
               {business.legalName}
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:block">

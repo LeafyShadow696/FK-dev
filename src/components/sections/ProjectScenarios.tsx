@@ -51,7 +51,7 @@ export function ProjectScenarios() {
               className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6"
             >
               <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-card/60">
-                <Icon className="h-5 w-5 text-brand-violet" aria-hidden />
+                <Icon className="h-5 w-5 text-foreground/90" aria-hidden />
               </div>
               <h3 className="font-display text-xl font-semibold text-foreground">
                 {item.title}
@@ -61,7 +61,7 @@ export function ProjectScenarios() {
               </p>
               <div className="mt-5 flex gap-3 rounded-lg border border-border/60 bg-background/30 p-4">
                 <ArrowRight
-                  className="mt-0.5 h-4 w-4 flex-none text-brand-teal"
+                  className="mt-0.5 h-4 w-4 flex-none text-foreground/90"
                   aria-hidden
                 />
                 <p className="text-sm leading-relaxed text-foreground/90">

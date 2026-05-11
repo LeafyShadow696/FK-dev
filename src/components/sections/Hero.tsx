@@ -25,7 +25,7 @@ export function Hero() {
           </span>
 
           <h1 className="brand-script text-6xl text-balance sm:text-7xl md:text-8xl">
-            <span className="text-gradient-brand">{business.legalName}</span>
+            <span className="signature-gradient">{business.legalName}</span>
           </h1>
 
           <p className="mt-5 max-w-2xl text-lg italic text-muted-foreground sm:text-xl">

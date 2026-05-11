@@ -46,7 +46,7 @@ export function BusinessCard() {
 
             <div className="flex flex-col gap-4 text-center sm:text-left">
               <div>
-                <div className="brand-script text-5xl text-gradient-brand sm:text-6xl">
+                <div className="brand-script signature-gradient text-5xl sm:text-6xl">
                   {business.legalName}
                 </div>
                 <div className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -62,7 +62,7 @@ export function BusinessCard() {
               <ul className="flex flex-col gap-3 text-sm sm:text-base">
                 <li className="flex items-center gap-3">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
-                    <Phone className="h-4 w-4 text-brand-pink" aria-hidden />
+                    <Phone className="h-4 w-4 text-foreground/90" aria-hidden />
                   </span>
                   <a
                     href={business.phoneHref}
@@ -73,7 +73,7 @@ export function BusinessCard() {
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
-                    <Mail className="h-4 w-4 text-brand-violet" aria-hidden />
+                    <Mail className="h-4 w-4 text-foreground/90" aria-hidden />
                   </span>
                   <a
                     href={business.emailHref}
@@ -84,7 +84,7 @@ export function BusinessCard() {
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
-                    <MapPin className="h-4 w-4 text-brand-teal" aria-hidden />
+                    <MapPin className="h-4 w-4 text-foreground/90" aria-hidden />
                   </span>
                   <AddressLink
                     href={business.address.mapsHref}
@@ -95,7 +95,7 @@ export function BusinessCard() {
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card/60">
-                    <Globe className="h-4 w-4 text-brand-indigo" aria-hidden />
+                    <Globe className="h-4 w-4 text-foreground/90" aria-hidden />
                   </span>
                   <a
                     href={business.url}

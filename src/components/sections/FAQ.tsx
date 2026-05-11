@@ -49,7 +49,7 @@ export function FAQ() {
             <summary className="cursor-pointer list-none font-display text-lg font-semibold text-foreground marker:hidden">
               <span className="inline-flex w-full items-center justify-between gap-4">
                 {item.question}
-                <span className="text-sm text-brand-teal transition-transform group-open:rotate-45">
+                <span className="text-sm text-foreground/90 transition-transform group-open:rotate-45">
                   +
                 </span>
               </span>

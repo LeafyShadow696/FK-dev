@@ -35,7 +35,7 @@ export function Footer() {
                 <FKMonogram className="h-7 w-7" title="FK" />
               </span>
               <div className="leading-tight">
-                <div className="brand-script text-2xl text-gradient-brand">
+                <div className="brand-script signature-gradient text-2xl">
                   {business.legalName}
                 </div>
                 <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -48,25 +48,25 @@ export function Footer() {
             </p>
             <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-4 w-4 text-brand-teal" aria-hidden />
+                <MapPin className="mt-0.5 h-4 w-4 text-foreground/90" aria-hidden />
                 <AddressLink href={business.address.mapsHref}>
                   {business.address.full}
                 </AddressLink>
               </li>
               <li className="flex items-start gap-3">
-                <Phone className="mt-0.5 h-4 w-4 text-brand-pink" aria-hidden />
+                <Phone className="mt-0.5 h-4 w-4 text-foreground/90" aria-hidden />
                 <a href={business.phoneHref} className="hover:text-foreground">
                   {business.phone}
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <Mail className="mt-0.5 h-4 w-4 text-brand-violet" aria-hidden />
+                <Mail className="mt-0.5 h-4 w-4 text-foreground/90" aria-hidden />
                 <a href={business.emailHref} className="hover:text-foreground">
                   {business.email}
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <Globe className="mt-0.5 h-4 w-4 text-brand-indigo" aria-hidden />
+                <Globe className="mt-0.5 h-4 w-4 text-foreground/90" aria-hidden />
                 <a
                   href={business.url}
                   className="hover:text-foreground"

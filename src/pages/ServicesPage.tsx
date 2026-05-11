@@ -102,7 +102,7 @@ export default function ServicesPage() {
                   </div>
                   <div className="flex gap-3 rounded-lg border border-border/60 bg-background/30 p-4">
                     <ArrowRight
-                      className="mt-0.5 h-4 w-4 flex-none text-brand-teal"
+                      className="mt-0.5 h-4 w-4 flex-none text-foreground/90"
                       aria-hidden
                     />
                     <p className="text-sm leading-relaxed text-muted-foreground">

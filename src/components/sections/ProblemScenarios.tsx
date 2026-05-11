@@ -81,7 +81,7 @@ export function ProblemScenarios({ compact = false }: ProblemScenariosProps) {
               className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-6"
             >
               <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-card/60">
-                <Icon className="h-5 w-5 text-brand-teal" aria-hidden />
+                <Icon className="h-5 w-5 text-foreground/90" aria-hidden />
               </div>
               <h3 className="font-display text-xl font-semibold text-foreground">
                 {item.title}

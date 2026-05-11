@@ -36,7 +36,7 @@ export function WhyMe() {
             className="flex items-start gap-3 rounded-[var(--radius)] border border-border/70 bg-card/40 p-5"
           >
             <CheckCircle2
-              className="mt-0.5 h-5 w-5 flex-none text-brand-teal"
+              className="mt-0.5 h-5 w-5 flex-none text-foreground/90"
               aria-hidden
             />
             <span className="text-sm leading-relaxed text-foreground/90 sm:text-base">
@@ -54,7 +54,7 @@ export function WhyMe() {
           {boundaries.map((point) => (
             <li key={point} className="flex items-start gap-3">
               <CheckCircle2
-                className="mt-0.5 h-5 w-5 flex-none text-brand-violet"
+                className="mt-0.5 h-5 w-5 flex-none text-foreground/90"
                 aria-hidden
               />
               <span className="text-sm leading-relaxed text-muted-foreground sm:text-base">

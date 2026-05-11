@@ -134,7 +134,7 @@ function ConsentBanner() {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex gap-3">
           <span className="mt-1 flex h-9 w-9 flex-none items-center justify-center rounded-md border border-border/70 bg-card/60">
-            <ShieldCheck className="h-4 w-4 text-brand-teal" aria-hidden />
+            <ShieldCheck className="h-4 w-4 text-foreground/90" aria-hidden />
           </span>
           <div>
             <h2 className="text-sm font-semibold text-foreground">
@@ -184,7 +184,7 @@ function ConsentDialog({ onClose }: ConsentDialogProps) {
         <div className="flex items-start justify-between gap-4 border-b border-border/70 p-5 sm:p-6">
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              <Settings2 className="h-4 w-4 text-brand-violet" aria-hidden />
+              <Settings2 className="h-4 w-4 text-foreground/90" aria-hidden />
               Nastavení
             </div>
             <h2
