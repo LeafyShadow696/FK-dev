@@ -17,6 +17,9 @@ Gemini CLI can recover the project context quickly if Codex/OpenAI is unavailabl
 - When changing project architecture, routes, env vars, deployment behavior, or
   conventions, update `AGENTS.md`, this file, `CLAUDE.md`, `GROK.md`, and
   `.github/copilot-instructions.md`.
+- Local Gemini CLI baseline was verified on 2026-05-14 with version `0.42.0`,
+  user-level `GEMINI_API_KEY`, and `gemini.cmd --skip-trust -p "..."` from the
+  repository root.
 
 ## Start Here
 

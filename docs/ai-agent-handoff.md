@@ -206,6 +206,13 @@ Gemini CLI should be installed from the official package:
 npm.cmd install -g @google/gemini-cli
 ```
 
+Verified local baseline as of 2026-05-14:
+
+- Gemini CLI version: `0.42.0`
+- Authentication: user-level `GEMINI_API_KEY`
+- API access: verified with a headless prompt from the repository root
+- Headless trust mode: use `--skip-trust` for non-interactive checks
+
 Run from the repo root:
 
 ```powershell
@@ -216,7 +223,7 @@ gemini
 Non-interactive check:
 
 ```powershell
-gemini -p "Read GEMINI.md and AGENTS.md. Summarize this project, its canonical domain, and the checks required before deployment."
+gemini.cmd --skip-trust -p "Read GEMINI.md and AGENTS.md. Summarize this project, its canonical domain, and the checks required before deployment."
 ```
 
 Project Gemini configuration:

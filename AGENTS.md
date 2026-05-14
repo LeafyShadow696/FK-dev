@@ -329,6 +329,13 @@ $env:PLAYWRIGHT_BASE_URL='https://fkdev.xyz'; npm.cmd run test:e2e
 
 Gemini CLI is the intended local fallback if Codex/OpenAI is unavailable.
 
+Verified local baseline as of 2026-05-14:
+
+- Gemini CLI version: `0.42.0`
+- Authentication: user-level `GEMINI_API_KEY`
+- Project launch directory: `C:\Users\buldo\Documents\GitHubProjects\FK-dev`
+- Headless verification works with `gemini.cmd --skip-trust -p "..."`
+
 Project-specific Gemini context is stored in:
 
 - `GEMINI.md`
