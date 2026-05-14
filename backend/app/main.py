@@ -5,10 +5,12 @@ from pydantic import BaseModel, Field
 
 from .database import (
     database_status,
+    list_content_blocks,
     list_audit_events,
     list_provider_snapshots,
     record_audit_event,
     record_provider_snapshot,
+    upsert_content_block,
 )
 from .settings import get_settings
 
@@ -88,6 +90,33 @@ class ProviderSnapshotItem(BaseModel):
 
 class ProviderSnapshotsResponse(BaseModel):
     snapshots: list[ProviderSnapshotItem]
+
+
+class ContentBlockRequest(BaseModel):
+    key: str = Field(min_length=2, max_length=80)
+    label: str = Field(min_length=2, max_length=120)
+    area: str = Field(min_length=2, max_length=80)
+    draft_value: str = Field(min_length=1, max_length=4000)
+    publish: bool = False
+
+
+class ContentBlockItem(BaseModel):
+    key: str
+    label: str
+    area: str
+    draft_value: str
+    published_value: str
+    updated_at: str
+    published_at: str | None
+
+
+class ContentBlocksResponse(BaseModel):
+    blocks: list[ContentBlockItem]
+
+
+class ContentBlockResponse(BaseModel):
+    stored: bool
+    block: ContentBlockItem | None
 
 
 app = FastAPI(
@@ -204,6 +233,36 @@ def provider_snapshots(
     ]
 
     return ProviderSnapshotsResponse(snapshots=snapshots)
+
+
+@app.get("/admin/content", response_model=ContentBlocksResponse)
+def content_blocks(
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ContentBlocksResponse:
+    require_backend_token(x_fk_backend_token)
+    blocks = [ContentBlockItem(**block.__dict__) for block in list_content_blocks()]
+
+    return ContentBlocksResponse(blocks=blocks)
+
+
+@app.post("/admin/content", response_model=ContentBlockResponse)
+def save_content_block(
+    payload: ContentBlockRequest,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ContentBlockResponse:
+    require_backend_token(x_fk_backend_token)
+    block = upsert_content_block(
+        key=payload.key,
+        label=payload.label,
+        area=payload.area,
+        draft_value=payload.draft_value,
+        publish=payload.publish,
+    )
+
+    return ContentBlockResponse(
+        stored=block is not None,
+        block=ContentBlockItem(**block.__dict__) if block else None,
+    )
 
 
 @app.get("/integrations", response_model=list[IntegrationStatus])

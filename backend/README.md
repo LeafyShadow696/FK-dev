@@ -17,6 +17,8 @@ Current backend endpoints:
 - `GET /admin/status` - read-only database and audit-log readiness.
 - `GET /admin/audit` - protected recent audit event read; requires `FK_BACKEND_ADMIN_TOKEN`.
 - `POST /admin/audit` - protected audit event write; requires `FK_BACKEND_ADMIN_TOKEN`.
+- `GET /admin/content` - protected content block read for the private portal.
+- `POST /admin/content` - protected draft/published content block write for Content studio.
 - `GET /admin/provider-snapshots` - protected provider snapshot history read.
 - `POST /admin/provider-snapshots` - protected provider snapshot write.
 

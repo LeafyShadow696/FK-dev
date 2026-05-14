@@ -17,6 +17,7 @@ Key rules:
 - `/api/admin/overview` may return provider operations such as Vercel domains and GitHub Actions; keep provider calls server-side.
 - Provider history uses protected `/admin/provider-snapshots`; do not expose the backend token to the browser.
 - Audit/provider history filtering is UI-local; keep raw provider/backend calls server-side.
+- Content studio uses protected `/admin/content` endpoints and PostgreSQL content blocks for draft/live-preview editing; public pages remain checked-in until a publish workflow is approved.
 - Do not commit `.env` files, provider tokens, `.vercel/`, `backend/.venv/`, build output, or local auth/session files.
 - Gemini CLI fallback context lives in `GEMINI.md`, `.gemini/settings.json`, and `.geminiignore`.
 - Update `AGENTS.md` and related agent files when routes, env vars, architecture, deployment behavior, or conventions change.

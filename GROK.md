@@ -12,4 +12,7 @@ is Czech-first and must remain accurate, practical, and consistent with
 
 Do not commit secrets, do not expose `/portal` data without a verified
 server-side session, keep protected backend writes behind `FK_BACKEND_ADMIN_TOKEN`,
-and run the required checks before shipping changes.
+and run the required checks before shipping changes. Content studio stores
+private draft/live-preview content blocks through protected `/admin/content`
+backend endpoints; public pages still use checked-in content until a publish
+workflow is approved.

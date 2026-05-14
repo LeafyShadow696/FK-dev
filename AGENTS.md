@@ -222,6 +222,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - read-only operational checks for Vercel domains and GitHub Actions workflow runs
 - PostgreSQL-backed provider status snapshots for the admin portal history view
+- PostgreSQL-backed content blocks for private draft/live-preview editing
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`
@@ -278,6 +279,13 @@ stores an aggregated provider snapshot in the protected FastAPI
 the portal history view. The portal applies client-side filters and display
 limits to audit logs and provider snapshots; provider tokens and raw backend
 access remain server-side.
+
+The portal includes a private Content studio backed by protected
+`/admin/content` FastAPI endpoints and the `admin_content_blocks` PostgreSQL
+table. It supports draft editing, live preview, and published content snapshots
+for selected landing-page copy. The public website still renders the checked-in
+React/data files; do not wire database content into public pages without an
+explicit publish workflow and tests.
 
 ## Provider and Deployment Snapshot
 

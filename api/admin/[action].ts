@@ -47,6 +47,16 @@ type ProviderSnapshot = {
   createdAt: string
 }
 
+type ContentBlock = {
+  key: string
+  label: string
+  area: string
+  draftValue: string
+  publishedValue: string
+  updatedAt: string
+  publishedAt: string | null
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -599,6 +609,76 @@ async function backendProviderSnapshots(): Promise<ProviderSnapshot[]> {
   }
 }
 
+async function backendContentBlocks(): Promise<ContentBlock[]> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return []
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/content`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.blocks)) {
+      return []
+    }
+
+    return response.data.blocks.map((block: any) => ({
+      key: String(block.key ?? ""),
+      label: String(block.label ?? ""),
+      area: String(block.area ?? ""),
+      draftValue: String(block.draft_value ?? ""),
+      publishedValue: String(block.published_value ?? ""),
+      updatedAt: String(block.updated_at ?? ""),
+      publishedAt: block.published_at ? String(block.published_at) : null,
+    }))
+  } catch {
+    return []
+  }
+}
+
+async function saveBackendContentBlock(input: {
+  key: string
+  label: string
+  area: string
+  draftValue: string
+  publish: boolean
+}) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(`${backendUrl.replace(/\/$/, "")}/admin/content`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-FK-Backend-Token": backendToken,
+    },
+    body: JSON.stringify({
+      key: input.key,
+      label: input.label,
+      area: input.area,
+      draft_value: input.draftValue,
+      publish: input.publish,
+    }),
+  })
+}
+
 async function githubWorkflowChecks(): Promise<OperationCheck[]> {
   const checkedAt = new Date().toISOString()
   const token = getAnySecret(["GITHUB_TOKEN", "GITHUB_API_KEY"])
@@ -850,6 +930,64 @@ export default async function handler(req: any, res: any) {
     return
   }
 
+  if (action === "content") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const key = typeof body.key === "string" ? body.key.trim() : ""
+    const label = typeof body.label === "string" ? body.label.trim() : ""
+    const area = typeof body.area === "string" ? body.area.trim() : ""
+    const draftValue =
+      typeof body.draftValue === "string" ? body.draftValue.trim() : ""
+    const publish = body.publish === true
+
+    if (
+      key.length < 2 ||
+      key.length > 80 ||
+      label.length < 2 ||
+      label.length > 120 ||
+      area.length < 2 ||
+      area.length > 80 ||
+      draftValue.length < 1 ||
+      draftValue.length > 4000
+    ) {
+      sendJson(res, 400, { message: "Obsahový blok nemá platný formát." })
+      return
+    }
+
+    const saved = await saveBackendContentBlock({
+      key,
+      label,
+      area,
+      draftValue,
+      publish,
+    })
+
+    if (!saved.ok) {
+      sendJson(res, saved.status || 502, {
+        message: "Nepodařilo se uložit obsah do backendu.",
+      })
+      return
+    }
+
+    sendJson(res, 200, saved.data)
+    return
+  }
+
   if (action === "overview") {
     if (!config.ready) {
       sendJson(res, 503, {
@@ -864,10 +1002,11 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs, operations] = await Promise.all([
+    const [providers, auditLogs, operations, contentBlocks] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
       operationChecks(),
+      backendContentBlocks(),
     ])
     await writeProviderSnapshot(providers, operations)
     const providerSnapshots = await backendProviderSnapshots()
@@ -885,6 +1024,7 @@ export default async function handler(req: any, res: any) {
       auditLogs,
       operations,
       providerSnapshots,
+      contentBlocks,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [

@@ -4,6 +4,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  Eye,
+  FileText,
   GitPullRequest,
   Globe2,
   KeyRound,
@@ -13,6 +15,7 @@ import {
   ScrollText,
   Server,
   ShieldCheck,
+  Save,
   Wifi,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -72,9 +75,56 @@ type PortalOverview = {
     payload: Record<string, unknown>
     createdAt: string
   }>
+  contentBlocks?: Array<ContentBlock>
   configuredIntegrations: number
   checklist: string[]
 }
+
+type ContentBlock = {
+  key: string
+  label: string
+  area: string
+  draftValue: string
+  publishedValue: string
+  updatedAt: string
+  publishedAt: string | null
+}
+
+const defaultContentBlocks: ContentBlock[] = [
+  {
+    key: "hero.lead",
+    label: "Úvodní sdělení",
+    area: "Úvod",
+    draftValue:
+      "Navrhuji a stavím weby, PWA, interní nástroje a automatizace pro podnikatele a menší firmy, které potřebují jasný výstup, rychlé spuštění a řešení použitelné i po předání.",
+    publishedValue:
+      "Navrhuji a stavím weby, PWA, interní nástroje a automatizace pro podnikatele a menší firmy, které potřebují jasný výstup, rychlé spuštění a řešení použitelné i po předání.",
+    updatedAt: "",
+    publishedAt: null,
+  },
+  {
+    key: "services.positioning",
+    label: "Pozice služeb",
+    area: "Služby",
+    draftValue:
+      "Digitální řešení, automatizace a webové aplikace pro podnikatele a firmy, které chtějí srozumitelný výsledek bez zbytečné technické složitosti.",
+    publishedValue:
+      "Digitální řešení, automatizace a webové aplikace pro podnikatele a firmy, které chtějí srozumitelný výsledek bez zbytečné technické složitosti.",
+    updatedAt: "",
+    publishedAt: null,
+  },
+  {
+    key: "contact.prompt",
+    label: "Kontaktní výzva",
+    area: "Kontakt",
+    draftValue:
+      "Pošlete stručně, co řešíte, jaký je současný stav a co má být na konci lepší. Pokud rozsah ještě neznáte, začneme konzultací.",
+    publishedValue:
+      "Pošlete stručně, co řešíte, jaký je současný stav a co má být na konci lepší. Pokud rozsah ještě neznáte, začneme konzultací.",
+    updatedAt: "",
+    publishedAt: null,
+  },
+]
 
 async function readJson<T>(response: Response) {
   const text = await response.text()
@@ -326,10 +376,31 @@ function PortalDashboard({
   const [auditLimit, setAuditLimit] = useState(8)
   const [snapshotStatus, setSnapshotStatus] = useState("all")
   const [snapshotLimit, setSnapshotLimit] = useState(8)
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(() => {
+    const stored = overview.contentBlocks ?? []
+
+    return defaultContentBlocks.map((fallback) => {
+      const current = stored.find((block) => block.key === fallback.key)
+
+      return current ?? fallback
+    })
+  })
+  const [selectedContentKey, setSelectedContentKey] = useState(
+    defaultContentBlocks[0]?.key ?? "",
+  )
+  const [contentDraft, setContentDraft] = useState(
+    contentBlocks[0]?.draftValue ?? "",
+  )
+  const [contentMode, setContentMode] = useState<"draft" | "published">("draft")
+  const [contentMessage, setContentMessage] = useState("")
+  const [savingContent, setSavingContent] = useState(false)
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
   const providerSnapshots = overview.providerSnapshots ?? []
+  const selectedContent =
+    contentBlocks.find((block) => block.key === selectedContentKey) ??
+    contentBlocks[0]
 
   function formatAuditDate(value: string) {
     const date = new Date(value)
@@ -397,6 +468,79 @@ function PortalDashboard({
     [providerSnapshots, snapshotLimit, snapshotStatus],
   )
 
+  function selectContentBlock(key: string) {
+    const next = contentBlocks.find((block) => block.key === key)
+    setSelectedContentKey(key)
+    setContentDraft(next?.draftValue ?? "")
+    setContentMessage("")
+  }
+
+  async function saveContentBlock(publish: boolean) {
+    if (!selectedContent) {
+      return
+    }
+
+    setSavingContent(true)
+    setContentMessage("")
+
+    try {
+      const response = await fetch("/api/admin/content", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: selectedContent.key,
+          label: selectedContent.label,
+          area: selectedContent.area,
+          draftValue: contentDraft,
+          publish,
+        }),
+      })
+      const data = await readJson<{
+        block?: {
+          key: string
+          label: string
+          area: string
+          draft_value: string
+          published_value: string
+          updated_at: string
+          published_at: string | null
+        }
+      }>(response)
+
+      if (!response.ok || !data.block) {
+        setContentMessage("Obsah se nepodařilo uložit.")
+        return
+      }
+
+      const nextBlock: ContentBlock = {
+        key: data.block.key,
+        label: data.block.label,
+        area: data.block.area,
+        draftValue: data.block.draft_value,
+        publishedValue: data.block.published_value,
+        updatedAt: data.block.updated_at,
+        publishedAt: data.block.published_at,
+      }
+
+      setContentBlocks((current) =>
+        current.map((block) =>
+          block.key === nextBlock.key ? nextBlock : block,
+        ),
+      )
+      setContentDraft(nextBlock.draftValue)
+      setContentMessage(
+        publish
+          ? "Draft je uložený a označený jako publikovaný."
+          : "Draft je uložený pro další kontrolu.",
+      )
+    } catch {
+      setContentMessage("Admin API teď neuložilo obsah. Zkuste to znovu.")
+    } finally {
+      setSavingContent(false)
+    }
+  }
+
   return (
     <main className="px-4 py-12 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-7xl">
@@ -439,6 +583,140 @@ function PortalDashboard({
             </p>
           </article>
         </div>
+
+        {selectedContent ? (
+          <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-foreground/90" aria-hidden />
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-foreground">
+                    Content studio
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Bezpečný draft editor pro vybrané texty landing page s živým náhledem.
+                  </p>
+                </div>
+              </div>
+              <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                {contentBlocks.length} bloky
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="grid gap-3">
+                {contentBlocks.map((block) => (
+                  <button
+                    key={block.key}
+                    type="button"
+                    onClick={() => selectContentBlock(block.key)}
+                    className={`rounded-[var(--radius)] border p-4 text-left transition ${
+                      block.key === selectedContent.key
+                        ? "border-brand-violet/60 bg-background/50"
+                        : "border-border/60 bg-background/25 hover:bg-background/40"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {block.area}
+                    </span>
+                    <span className="mt-2 block font-display text-base font-semibold text-foreground">
+                      {block.label}
+                    </span>
+                    <span className="mt-2 line-clamp-2 block text-sm leading-relaxed text-muted-foreground">
+                      {block.draftValue}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-4">
+                <label className="text-sm font-medium text-foreground">
+                  Draft text
+                  <textarea
+                    value={contentDraft}
+                    onChange={(event) => setContentDraft(event.target.value)}
+                    rows={7}
+                    maxLength={4000}
+                    className="mt-2 w-full resize-y rounded-[var(--radius)] border border-border/70 bg-background/50 px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-brand-violet/70"
+                  />
+                </label>
+
+                <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Eye className="h-4 w-4" aria-hidden />
+                      Živý náhled
+                    </div>
+                    <div className="inline-flex w-fit rounded-full border border-border/70 bg-background/40 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setContentMode("draft")}
+                        className={`rounded-full px-3 py-1 text-xs transition ${
+                          contentMode === "draft"
+                            ? "bg-card text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setContentMode("published")}
+                        className={`rounded-full px-3 py-1 text-xs transition ${
+                          contentMode === "published"
+                            ? "bg-card text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Publikováno
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-base leading-relaxed text-foreground/90">
+                    {contentMode === "draft"
+                      ? contentDraft
+                      : selectedContent.publishedValue || "Zatím není publikovaná verze."}
+                  </p>
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                    Poslední uložení:{" "}
+                    {selectedContent.updatedAt
+                      ? formatAuditDate(selectedContent.updatedAt)
+                      : "zatím jen výchozí lokální návrh"}
+                  </p>
+                </div>
+
+                {contentMessage ? (
+                  <p className="rounded-[var(--radius)] border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
+                    {contentMessage}
+                  </p>
+                ) : null}
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void saveContentBlock(false)}
+                    disabled={savingContent || contentDraft.trim().length === 0}
+                  >
+                    {savingContent ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Save className="h-4 w-4" aria-hidden />
+                    )}
+                    Uložit draft
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void saveContentBlock(true)}
+                    disabled={savingContent || contentDraft.trim().length === 0}
+                  >
+                    Publikovat snapshot
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {providers.length > 0 ? (
           <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">

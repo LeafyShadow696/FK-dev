@@ -45,6 +45,12 @@ Provider status history is stored in `admin_provider_snapshots`. The Vercel admi
 API writes an aggregated snapshot after authenticated overview reads and returns
 the latest snapshots for the portal history section.
 
+Content studio drafts are stored in `admin_content_blocks`. The private portal
+can edit selected landing-page copy, compare draft and published text in a live
+preview, and store a published snapshot. The public site is not switched to
+database-backed content yet; published content blocks are the controlled staging
+layer for a future publish workflow.
+
 ## Storage
 
 Do not store secret env files in Git.

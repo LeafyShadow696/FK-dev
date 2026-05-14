@@ -42,7 +42,10 @@ a valid admin session. It also returns server-side `operations` for Vercel
 domains and GitHub Actions workflow runs. Authenticated overview loads store
 provider snapshots in PostgreSQL through the protected FastAPI
 `/admin/provider-snapshots` endpoint. The portal UI includes client-side filters
-and item limits for audit logs and provider snapshots.
+and item limits for audit logs and provider snapshots. Content studio stores
+private draft/live-preview content blocks through protected FastAPI
+`/admin/content` endpoints and `admin_content_blocks`; public pages still use
+checked-in content until a publish workflow is explicitly implemented.
 
 ## Recovery
 

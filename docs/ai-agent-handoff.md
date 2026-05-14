@@ -59,6 +59,10 @@ Admin and backend:
   `providerSnapshots` for the portal history view.
 - Audit logs and provider snapshots are filtered/limited in the portal UI after
   server-side loading.
+- Content studio uses protected FastAPI `/admin/content` endpoints and
+  `admin_content_blocks` in PostgreSQL for private draft editing, live preview,
+  and published content snapshots. Public pages still render checked-in content
+  until a separate publish workflow is approved.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into
