@@ -49,7 +49,9 @@ Admin and backend:
 - Render Postgres: `fkdev-admin-db`
 - `backend/app/database.py` initializes PostgreSQL tables and reports database status.
 - `/admin/status` is a read-only backend status endpoint.
-- `/admin/audit` is a protected backend write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
+- `/admin/audit` is a protected backend read/write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
+- The Vercel admin API includes recent audit events in `/api/admin/overview`
+  only for authenticated admin sessions.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into

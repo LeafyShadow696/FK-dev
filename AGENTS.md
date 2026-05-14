@@ -222,7 +222,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
-- protected backend audit event endpoint through `/admin/audit`
+- protected backend audit event read/write endpoint through `/admin/audit`
 - Render backend health visibility through `RENDER_BACKEND_URL`
 
 Required server-side env vars before production admin login can work:
@@ -260,9 +260,11 @@ The Python/FastAPI backend is deployed on Render as `fkdev-admin-api` at
 `https://fkdev-admin-api.onrender.com`. Render Postgres is `fkdev-admin-db`.
 PostgreSQL is used as the baseline for admin audit logs, settings, and future
 read-only portal data. The backend exposes a read-only `/admin/status` endpoint
-for database health and a protected `/admin/audit` write endpoint that requires
-`FK_BACKEND_ADMIN_TOKEN`. Object storage is intended for non-secret uploaded
-files. Treat env files as secret inputs only; do not commit or serve them.
+for database health and a protected `/admin/audit` endpoint that supports
+server-side audit reads and writes with `FK_BACKEND_ADMIN_TOKEN`. The Vercel
+admin API proxies recent audit events only after a valid admin session. Object
+storage is intended for non-secret uploaded files. Treat env files as secret
+inputs only; do not commit or serve them.
 
 ## Provider and Deployment Snapshot
 

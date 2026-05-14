@@ -1,9 +1,9 @@
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from .database import database_status, init_database, record_audit_event
+from .database import database_status, list_audit_events, record_audit_event
 from .settings import get_settings
 
 
@@ -47,6 +47,18 @@ class AuditEventResponse(BaseModel):
     event_id: str | None
 
 
+class AuditEventItem(BaseModel):
+    id: str
+    event_type: str
+    actor: str
+    metadata: dict[str, Any]
+    created_at: str
+
+
+class AuditEventsResponse(BaseModel):
+    events: list[AuditEventItem]
+
+
 app = FastAPI(
     title="fkdev.xyz Admin API",
     version="0.1.0",
@@ -58,6 +70,19 @@ app = FastAPI(
 @app.on_event("startup")
 def startup() -> None:
     database_status()
+
+
+def require_backend_token(x_fk_backend_token: str | None) -> None:
+    settings = get_settings()
+
+    if not settings.fk_backend_admin_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Backend admin token is not configured.",
+        )
+
+    if x_fk_backend_token != settings.fk_backend_admin_token:
+        raise HTTPException(status_code=401, detail="Unauthorized.")
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -90,16 +115,7 @@ def create_audit_event(
     request: Request,
     x_fk_backend_token: str | None = Header(default=None),
 ) -> AuditEventResponse:
-    settings = get_settings()
-
-    if not settings.fk_backend_admin_token:
-        raise HTTPException(
-            status_code=503,
-            detail="Backend admin token is not configured.",
-        )
-
-    if x_fk_backend_token != settings.fk_backend_admin_token:
-        raise HTTPException(status_code=401, detail="Unauthorized.")
+    require_backend_token(x_fk_backend_token)
 
     event_id = record_audit_event(
         payload.event_type,
@@ -110,6 +126,19 @@ def create_audit_event(
     )
 
     return AuditEventResponse(stored=bool(event_id), event_id=event_id)
+
+
+@app.get("/admin/audit", response_model=AuditEventsResponse)
+def audit_events(
+    limit: int = Query(default=10, ge=1, le=50),
+    x_fk_backend_token: str | None = Header(default=None),
+) -> AuditEventsResponse:
+    require_backend_token(x_fk_backend_token)
+    events = [
+        AuditEventItem(**event.__dict__) for event in list_audit_events(limit=limit)
+    ]
+
+    return AuditEventsResponse(events=events)
 
 
 @app.get("/integrations", response_model=list[IntegrationStatus])

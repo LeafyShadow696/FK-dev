@@ -20,6 +20,14 @@ type ProviderSummary = {
   checkedAt: string
 }
 
+type AuditLogItem = {
+  id: string
+  eventType: string
+  actor: string
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -445,6 +453,45 @@ async function providerSummaries() {
   return [vercel, github, backend]
 }
 
+async function backendAuditEvents(): Promise<AuditLogItem[]> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return []
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/audit?limit=8`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.events)) {
+      return []
+    }
+
+    return response.data.events.map((event: any) => ({
+      id: String(event.id ?? ""),
+      eventType: String(event.event_type ?? "unknown"),
+      actor: String(event.actor ?? "system"),
+      metadata:
+        event.metadata && typeof event.metadata === "object"
+          ? event.metadata
+          : {},
+      createdAt: String(event.created_at ?? ""),
+    }))
+  } catch {
+    return []
+  }
+}
+
 function isAuthenticated(req: any, sessionSecret: string) {
   const token = parseCookie(req.headers.cookie, SESSION_COOKIE)
 
@@ -541,7 +588,10 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const providers = await providerSummaries()
+    const [providers, auditLogs] = await Promise.all([
+      providerSummaries(),
+      backendAuditEvents(),
+    ])
 
     sendJson(res, 200, {
       generatedAt: new Date().toISOString(),
@@ -553,6 +603,7 @@ export default async function handler(req: any, res: any) {
       },
       integrations,
       providers,
+      auditLogs,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [

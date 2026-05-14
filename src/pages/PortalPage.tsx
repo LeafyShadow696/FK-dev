@@ -7,6 +7,7 @@ import {
   Loader2,
   LockKeyhole,
   LogOut,
+  ScrollText,
   Server,
   ShieldCheck,
   Wifi,
@@ -43,6 +44,13 @@ type PortalOverview = {
     detail: string
     href?: string
     checkedAt: string
+  }>
+  auditLogs?: Array<{
+    id: string
+    eventType: string
+    actor: string
+    metadata: Record<string, unknown>
+    createdAt: string
   }>
   configuredIntegrations: number
   checklist: string[]
@@ -295,6 +303,33 @@ function PortalDashboard({
     [overview.integrations],
   )
   const providers = overview.providers ?? []
+  const auditLogs = overview.auditLogs ?? []
+
+  function formatAuditDate(value: string) {
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+      return "neznámý čas"
+    }
+
+    return new Intl.DateTimeFormat("cs-CZ", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date)
+  }
+
+  function summarizeMetadata(metadata: Record<string, unknown>) {
+    const entries = Object.entries(metadata)
+
+    if (entries.length === 0) {
+      return "Bez doplňujících dat"
+    }
+
+    return entries
+      .slice(0, 3)
+      .map(([key, value]) => `${key}: ${String(value)}`)
+      .join(" · ")
+  }
 
   return (
     <main className="px-4 py-12 sm:px-6 lg:px-8">
@@ -384,6 +419,58 @@ function PortalDashboard({
             </div>
           </section>
         ) : null}
+
+        <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-3">
+              <ScrollText className="h-5 w-5 text-foreground/90" aria-hidden />
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  Audit log
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Poslední backendové události uložené v PostgreSQL.
+                </p>
+              </div>
+            </div>
+            <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+              {auditLogs.length > 0 ? `${auditLogs.length} událostí` : "Bez událostí"}
+            </span>
+          </div>
+
+          {auditLogs.length > 0 ? (
+            <div className="mt-5 grid gap-3">
+              {auditLogs.map((event) => (
+                <article
+                  key={event.id}
+                  className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="font-display text-base font-semibold text-foreground">
+                        {event.eventType}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {event.actor} · {formatAuditDate(event.createdAt)}
+                      </p>
+                    </div>
+                    <code className="w-fit rounded-md border border-border/60 bg-background/35 px-2 py-1 text-xs text-muted-foreground">
+                      {event.id.slice(0, 8)}
+                    </code>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {summarizeMetadata(event.metadata)}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-[var(--radius)] border border-border/60 bg-background/30 p-4 text-sm leading-relaxed text-muted-foreground">
+              Audit log je připravený. Události se zobrazí po prvních backendových
+              zápisech nebo po dalším produkčním smoke ověření.
+            </div>
+          )}
+        </section>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           {portalIntegrations.map((item) => {

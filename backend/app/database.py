@@ -24,6 +24,15 @@ class DatabaseStatus:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class AuditEvent:
+    id: str
+    event_type: str
+    actor: str
+    metadata: dict[str, Any]
+    created_at: str
+
+
 _engine: Engine | None = None
 
 
@@ -221,3 +230,53 @@ def record_audit_event(
         connection.execute(statement, params)
 
     return event_id
+
+
+def list_audit_events(limit: int = 10) -> list[AuditEvent]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+
+    safe_limit = max(1, min(limit, 50))
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT id, event_type, actor, metadata, created_at
+                FROM admin_audit_logs
+                ORDER BY created_at DESC
+                LIMIT :limit
+                """,
+            ),
+            {"limit": safe_limit},
+        ).mappings()
+
+        events: list[AuditEvent] = []
+        for row in rows:
+            metadata = row["metadata"]
+
+            if isinstance(metadata, str):
+                try:
+                    parsed_metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    parsed_metadata = {}
+            elif isinstance(metadata, dict):
+                parsed_metadata = metadata
+            else:
+                parsed_metadata = {}
+
+            events.append(
+                AuditEvent(
+                    id=str(row["id"]),
+                    event_type=str(row["event_type"]),
+                    actor=str(row["actor"]),
+                    metadata=parsed_metadata,
+                    created_at=str(row["created_at"]),
+                ),
+            )
+
+    return events

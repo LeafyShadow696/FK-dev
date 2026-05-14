@@ -36,8 +36,10 @@ Use PostgreSQL as the default database. It is the safest baseline for:
 
 The first implemented backend database layer initializes `admin_audit_logs` and
 `admin_settings` through the FastAPI service. The read-only `/admin/status`
-endpoint reports connection and audit-log readiness. The write path
-`/admin/audit` is intentionally protected by `FK_BACKEND_ADMIN_TOKEN`.
+endpoint reports connection and audit-log readiness. The `/admin/audit` path is
+protected by `FK_BACKEND_ADMIN_TOKEN` for both recent-event reads and writes.
+The public browser never calls this backend endpoint directly; the Vercel admin
+API proxies recent audit events only after a valid admin session.
 
 ## Storage
 

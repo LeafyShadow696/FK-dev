@@ -36,6 +36,10 @@ Read these files before editing:
 - `tests/e2e/smoke.spec.ts`
 - `render.yaml`
 
+Current admin portal backend flow: `/api/admin/overview` proxies recent
+PostgreSQL audit events from the protected FastAPI `/admin/audit` endpoint after
+a valid admin session.
+
 ## Recovery
 
 If local files are missing, restore from:
