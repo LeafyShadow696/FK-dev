@@ -322,6 +322,10 @@ function PortalDashboard({
     () => new Map(overview.integrations.map((item) => [item.id, item])),
     [overview.integrations],
   )
+  const [auditFilter, setAuditFilter] = useState("")
+  const [auditLimit, setAuditLimit] = useState(8)
+  const [snapshotStatus, setSnapshotStatus] = useState("all")
+  const [snapshotLimit, setSnapshotLimit] = useState(8)
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
@@ -360,6 +364,38 @@ function PortalDashboard({
   function snapshotStatusLabel(status: string) {
     return status === "ok" ? "Stabilní" : "Zhoršený stav"
   }
+
+  const filteredAuditLogs = useMemo(() => {
+    const normalized = auditFilter.trim().toLowerCase()
+
+    return auditLogs
+      .filter((event) => {
+        if (!normalized) {
+          return true
+        }
+
+        return [
+          event.eventType,
+          event.actor,
+          summarizeMetadata(event.metadata),
+          event.id,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized)
+      })
+      .slice(0, auditLimit)
+  }, [auditFilter, auditLimit, auditLogs])
+
+  const filteredProviderSnapshots = useMemo(
+    () =>
+      providerSnapshots
+        .filter((snapshot) =>
+          snapshotStatus === "all" ? true : snapshot.status === snapshotStatus,
+        )
+        .slice(0, snapshotLimit),
+    [providerSnapshots, snapshotLimit, snapshotStatus],
+  )
 
   return (
     <main className="px-4 py-12 sm:px-6 lg:px-8">
@@ -528,12 +564,40 @@ function PortalDashboard({
                 </div>
               </div>
               <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
-                {providerSnapshots.length} snapshotů
+                {filteredProviderSnapshots.length} / {providerSnapshots.length}
               </span>
             </div>
 
+            <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+              <label className="text-sm font-medium text-foreground">
+                Stav
+                <select
+                  value={snapshotStatus}
+                  onChange={(event) => setSnapshotStatus(event.target.value)}
+                  className="mt-2 w-full rounded-[var(--radius)] border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none transition focus:border-brand-violet/70"
+                >
+                  <option value="all">Všechny stavy</option>
+                  <option value="ok">Stabilní</option>
+                  <option value="degraded">Zhoršený stav</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium text-foreground">
+                Počet
+                <select
+                  value={snapshotLimit}
+                  onChange={(event) => setSnapshotLimit(Number(event.target.value))}
+                  className="mt-2 w-full rounded-[var(--radius)] border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none transition focus:border-brand-violet/70"
+                >
+                  <option value={5}>5</option>
+                  <option value={8}>8</option>
+                  <option value={12}>12</option>
+                  <option value={20}>20</option>
+                </select>
+              </label>
+            </div>
+
             <div className="mt-5 grid gap-3">
-              {providerSnapshots.map((snapshot) => (
+              {filteredProviderSnapshots.map((snapshot) => (
                 <article
                   key={snapshot.id}
                   className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
@@ -571,13 +635,38 @@ function PortalDashboard({
               </div>
             </div>
             <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
-              {auditLogs.length > 0 ? `${auditLogs.length} událostí` : "Bez událostí"}
+              {filteredAuditLogs.length} / {auditLogs.length}
             </span>
           </div>
 
-          {auditLogs.length > 0 ? (
+          <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <label className="text-sm font-medium text-foreground">
+              Filtr
+              <input
+                value={auditFilter}
+                onChange={(event) => setAuditFilter(event.target.value)}
+                className="mt-2 w-full rounded-[var(--radius)] border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-brand-violet/70"
+                placeholder="Typ, aktér nebo metadata"
+              />
+            </label>
+            <label className="text-sm font-medium text-foreground">
+              Počet
+              <select
+                value={auditLimit}
+                onChange={(event) => setAuditLimit(Number(event.target.value))}
+                className="mt-2 w-full rounded-[var(--radius)] border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none transition focus:border-brand-violet/70"
+              >
+                <option value={5}>5</option>
+                <option value={8}>8</option>
+                <option value={12}>12</option>
+                <option value={20}>20</option>
+              </select>
+            </label>
+          </div>
+
+          {filteredAuditLogs.length > 0 ? (
             <div className="mt-5 grid gap-3">
-              {auditLogs.map((event) => (
+              {filteredAuditLogs.map((event) => (
                 <article
                   key={event.id}
                   className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
@@ -603,8 +692,9 @@ function PortalDashboard({
             </div>
           ) : (
             <div className="mt-5 rounded-[var(--radius)] border border-border/60 bg-background/30 p-4 text-sm leading-relaxed text-muted-foreground">
-              Audit log je připravený. Události se zobrazí po prvních backendových
-              zápisech nebo po dalším produkčním smoke ověření.
+              {auditLogs.length > 0
+                ? "Žádná událost neodpovídá aktuálnímu filtru."
+                : "Audit log je připravený. Události se zobrazí po prvních backendových zápisech nebo po dalším produkčním smoke ověření."}
             </div>
           )}
         </section>

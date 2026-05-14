@@ -483,7 +483,7 @@ async function backendAuditEvents(): Promise<AuditLogItem[]> {
 
   try {
     const response = await fetchJson(
-      `${backendUrl.replace(/\/$/, "")}/admin/audit?limit=8`,
+      `${backendUrl.replace(/\/$/, "")}/admin/audit?limit=20`,
       {
         headers: {
           Accept: "application/json",
@@ -570,7 +570,7 @@ async function backendProviderSnapshots(): Promise<ProviderSnapshot[]> {
 
   try {
     const response = await fetchJson(
-      `${backendUrl.replace(/\/$/, "")}/admin/provider-snapshots?limit=8`,
+      `${backendUrl.replace(/\/$/, "")}/admin/provider-snapshots?limit=20`,
       {
         headers: {
           Accept: "application/json",

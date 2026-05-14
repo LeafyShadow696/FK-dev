@@ -41,7 +41,8 @@ PostgreSQL audit events from the protected FastAPI `/admin/audit` endpoint after
 a valid admin session. It also returns server-side `operations` for Vercel
 domains and GitHub Actions workflow runs. Authenticated overview loads store
 provider snapshots in PostgreSQL through the protected FastAPI
-`/admin/provider-snapshots` endpoint.
+`/admin/provider-snapshots` endpoint. The portal UI includes client-side filters
+and item limits for audit logs and provider snapshots.
 
 ## Recovery
 

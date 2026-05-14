@@ -275,7 +275,9 @@ remain server-side because they use provider tokens.
 When `/api/admin/overview` is loaded by an authenticated admin, the Vercel API
 stores an aggregated provider snapshot in the protected FastAPI
 `/admin/provider-snapshots` endpoint and returns recent `providerSnapshots` for
-the portal history view.
+the portal history view. The portal applies client-side filters and display
+limits to audit logs and provider snapshots; provider tokens and raw backend
+access remain server-side.
 
 ## Provider and Deployment Snapshot
 

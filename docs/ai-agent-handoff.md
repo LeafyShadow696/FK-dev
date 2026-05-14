@@ -57,6 +57,8 @@ Admin and backend:
 - Authenticated `/api/admin/overview` loads store provider snapshots through the
   protected FastAPI `/admin/provider-snapshots` endpoint and returns recent
   `providerSnapshots` for the portal history view.
+- Audit logs and provider snapshots are filtered/limited in the portal UI after
+  server-side loading.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into
