@@ -1,0 +1,43 @@
+{
+  "general": {
+    "checkpointing": {
+      "enabled": true
+    }
+  },
+  "privacy": {
+    "usageStatisticsEnabled": false
+  },
+  "context": {
+    "fileName": [
+      "GEMINI.md",
+      "AGENTS.md"
+    ],
+    "fileFiltering": {
+      "respectGitIgnore": true,
+      "respectGeminiIgnore": true
+    }
+  },
+  "advanced": {
+    "excludedEnvVars": [
+      "DEBUG",
+      "DEBUG_MODE",
+      "FK_ADMIN_ACCESS_KEY",
+      "FK_ADMIN_SESSION_SECRET",
+      "OPENAI_API_KEY",
+      "GEMINI_API_KEY",
+      "GITHUB_TOKEN",
+      "GITHUB_API_KEY",
+      "RENDER_API_KEY",
+      "RAILWAY_API_KEY",
+      "RAILWAY_API_TOKEN",
+      "VERCEL_TOKEN",
+      "VERCEL_API_KEY",
+      "VERCEL_API_TOKEN",
+      "DATABASE_URL",
+      "FK_STORAGE_CONNECTION",
+      "TAILSCALE_API_KEY",
+      "TAILSCALE_AUTH_TOKEN",
+      "TAILSCALE_LOGIN_SECRET"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+.vercel/
+backend/.venv/
+__pycache__/
+*.pyc
+test-results/
+playwright-report/
+.playwright-mcp/
+.snowflake/
+.v0-trash/

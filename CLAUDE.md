@@ -1,7 +1,15 @@
 @AGENTS.md
+@docs/ai-agent-handoff.md
 
-## Claude Code Notes
+# Claude Code Notes
 
-Claude Code reads `CLAUDE.md` as project memory. Treat `AGENTS.md` as the source of truth for this repository.
+Treat `AGENTS.md` as the canonical source of truth and
+`docs/ai-agent-handoff.md` as the operational recovery guide.
 
-Keep responses concise, prefer concrete file references, and avoid changing production behavior without running the checks listed in `AGENTS.md`.
+This is the production business landing page for `https://fkdev.xyz`, with a
+private `/portal` admin route, Vercel serverless admin API, and Python/FastAPI
+backend on Render.
+
+Keep responses concise, prefer concrete file references, do not expose secrets,
+and do not change production behavior without running the checks listed in
+`AGENTS.md`.
