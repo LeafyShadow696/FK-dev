@@ -14,6 +14,7 @@ Key rules:
 - `/portal` is a private admin route backed by `/api/admin/[action]`; keep secrets server-side only.
 - Python backend work belongs under `backend/`; Render configuration belongs in `render.yaml`.
 - Backend `/admin/status` is read-only; backend `/admin/audit` requires `FK_BACKEND_ADMIN_TOKEN`.
+- `/api/admin/overview` may return provider operations such as Vercel domains and GitHub Actions; keep provider calls server-side.
 - Do not commit `.env` files, provider tokens, `.vercel/`, `backend/.venv/`, build output, or local auth/session files.
 - Gemini CLI fallback context lives in `GEMINI.md`, `.gemini/settings.json`, and `.geminiignore`.
 - Update `AGENTS.md` and related agent files when routes, env vars, architecture, deployment behavior, or conventions change.

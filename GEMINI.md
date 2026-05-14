@@ -38,7 +38,8 @@ Read these files before editing:
 
 Current admin portal backend flow: `/api/admin/overview` proxies recent
 PostgreSQL audit events from the protected FastAPI `/admin/audit` endpoint after
-a valid admin session.
+a valid admin session. It also returns server-side `operations` for Vercel
+domains and GitHub Actions workflow runs.
 
 ## Recovery
 

@@ -28,6 +28,16 @@ type AuditLogItem = {
   createdAt: string
 }
 
+type OperationCheck = {
+  id: string
+  label: string
+  ok: boolean
+  headline: string
+  detail: string
+  href?: string
+  checkedAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -492,6 +502,175 @@ async function backendAuditEvents(): Promise<AuditLogItem[]> {
   }
 }
 
+async function githubWorkflowChecks(): Promise<OperationCheck[]> {
+  const checkedAt = new Date().toISOString()
+  const token = getAnySecret(["GITHUB_TOKEN", "GITHUB_API_KEY"])
+
+  if (!token) {
+    return [
+      {
+        id: "github-actions",
+        label: "GitHub Actions",
+        ok: false,
+        headline: "Token není nastavený",
+        detail: "Chybí serverová proměnná GITHUB_TOKEN nebo GITHUB_API_KEY.",
+        checkedAt,
+      },
+    ]
+  }
+
+  try {
+    const response = await fetchJson(
+      "https://api.github.com/repos/LeafyShadow696/FK-dev/actions/runs?branch=main&per_page=3",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "fkdev-admin-portal",
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.workflow_runs)) {
+      return [
+        {
+          id: "github-actions",
+          label: "GitHub Actions",
+          ok: false,
+          headline: "GitHub Actions nejsou dostupné",
+          detail: `Workflow runs status ${response.status}.`,
+          checkedAt,
+        },
+      ]
+    }
+
+    const runs = response.data.workflow_runs.slice(0, 3)
+
+    if (runs.length === 0) {
+      return [
+        {
+          id: "github-actions-empty",
+          label: "GitHub Actions",
+          ok: true,
+          headline: "Bez workflow běhů",
+          detail: "Repozitář zatím nevrátil žádné běhy GitHub Actions pro main.",
+          checkedAt,
+        },
+      ]
+    }
+
+    return runs.map((run: any) => {
+      const status = String(run.status ?? "unknown")
+      const conclusion = String(run.conclusion ?? "")
+      const ok = status === "completed" && conclusion === "success"
+      const name = String(run.name ?? "Workflow")
+      const branch = String(run.head_branch ?? "main")
+
+      return {
+        id: `github-actions-${String(run.id ?? name)}`,
+        label: "GitHub Actions",
+        ok,
+        headline: `${name}: ${conclusion || status}`,
+        detail: `${branch} · ${formatDateTime(run.updated_at ?? run.created_at)}`,
+        href: String(run.html_url ?? "https://github.com/LeafyShadow696/FK-dev/actions"),
+        checkedAt,
+      }
+    })
+  } catch {
+    return [
+      {
+        id: "github-actions",
+        label: "GitHub Actions",
+        ok: false,
+        headline: "GitHub Actions API je nedostupné",
+        detail: "Nepodařilo se načíst poslední workflow běhy v časovém limitu.",
+        checkedAt,
+      },
+    ]
+  }
+}
+
+async function vercelDomainChecks(): Promise<OperationCheck[]> {
+  const checkedAt = new Date().toISOString()
+  const token = getAnySecret(["VERCEL_API_TOKEN", "VERCEL_TOKEN", "VERCEL_API_KEY"])
+  const projectId = getSecret("VERCEL_PROJECT_ID") || "prj_5rwIhFXRqZ0Q0i0tiVGuSPUMVhGn"
+  const teamId = getSecret("VERCEL_TEAM_ID") || "team_Q7P5ptcXkEL5SBpsQ2edIgr3"
+
+  if (!token) {
+    return [
+      {
+        id: "vercel-domains",
+        label: "Vercel domény",
+        ok: false,
+        headline: "Token není nastavený",
+        detail: "Chybí serverová proměnná VERCEL_TOKEN, VERCEL_API_TOKEN nebo VERCEL_API_KEY.",
+        checkedAt,
+      },
+    ]
+  }
+
+  try {
+    const response = await fetchJson(
+      `https://api.vercel.com/v9/projects/${projectId}/domains?teamId=${teamId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.domains)) {
+      return [
+        {
+          id: "vercel-domains",
+          label: "Vercel domény",
+          ok: false,
+          headline: "Vercel domény nejsou dostupné",
+          detail: `Project domains status ${response.status}.`,
+          checkedAt,
+        },
+      ]
+    }
+
+    return response.data.domains.map((domain: any) => {
+      const name = String(domain.name ?? "neznámá doména")
+      const verified = Boolean(domain.verified)
+      const redirect = domain.redirect ? `redirect na ${String(domain.redirect)}` : "bez redirectu"
+
+      return {
+        id: `vercel-domain-${name}`,
+        label: "Vercel doména",
+        ok: verified,
+        headline: name,
+        detail: `${verified ? "ověřená" : "neověřená"} · ${redirect}`,
+        href: `https://${name}`,
+        checkedAt,
+      }
+    })
+  } catch {
+    return [
+      {
+        id: "vercel-domains",
+        label: "Vercel domény",
+        ok: false,
+        headline: "Vercel Domains API je nedostupné",
+        detail: "Nepodařilo se načíst stav domén v časovém limitu.",
+        checkedAt,
+      },
+    ]
+  }
+}
+
+async function operationChecks() {
+  const [githubWorkflows, vercelDomains] = await Promise.all([
+    githubWorkflowChecks(),
+    vercelDomainChecks(),
+  ])
+
+  return [...vercelDomains, ...githubWorkflows]
+}
+
 function isAuthenticated(req: any, sessionSecret: string) {
   const token = parseCookie(req.headers.cookie, SESSION_COOKIE)
 
@@ -588,9 +767,10 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs] = await Promise.all([
+    const [providers, auditLogs, operations] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
+      operationChecks(),
     ])
 
     sendJson(res, 200, {
@@ -604,14 +784,14 @@ export default async function handler(req: any, res: any) {
       integrations,
       providers,
       auditLogs,
+      operations,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
-        "Ověřit Render Postgres přes backend endpoint /admin/status.",
-        "Nastavit FK_BACKEND_ADMIN_TOKEN pro chráněné backend audit zápisy.",
-        "Rozšířit GitHub stav o workflow a poslední běhy CI.",
-        "Rozšířit Vercel stav o domény, build logy a Web Analytics.",
-        "Přidat první read-only admin data z PostgreSQL do portálu.",
+        "Rozšířit Vercel stav o build logy a Web Analytics.",
+        "Přidat historické snapshoty provider stavů do PostgreSQL.",
+        "Doplnit filtr a stránkování audit logu.",
+        "Připravit první bezpečné content snapshoty landing page.",
       ],
     })
     return

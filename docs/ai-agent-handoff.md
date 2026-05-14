@@ -52,6 +52,8 @@ Admin and backend:
 - `/admin/audit` is a protected backend read/write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
 - The Vercel admin API includes recent audit events in `/api/admin/overview`
   only for authenticated admin sessions.
+- `/api/admin/overview` also includes read-only `operations` for Vercel domains
+  and GitHub Actions workflow runs. Provider tokens must stay server-side.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into

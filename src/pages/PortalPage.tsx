@@ -3,6 +3,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  GitPullRequest,
+  Globe2,
   KeyRound,
   Loader2,
   LockKeyhole,
@@ -51,6 +53,15 @@ type PortalOverview = {
     actor: string
     metadata: Record<string, unknown>
     createdAt: string
+  }>
+  operations?: Array<{
+    id: string
+    label: string
+    ok: boolean
+    headline: string
+    detail: string
+    href?: string
+    checkedAt: string
   }>
   configuredIntegrations: number
   checklist: string[]
@@ -304,6 +315,7 @@ function PortalDashboard({
   )
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
+  const operations = overview.operations ?? []
 
   function formatAuditDate(value: string) {
     const date = new Date(value)
@@ -329,6 +341,10 @@ function PortalDashboard({
       .slice(0, 3)
       .map(([key, value]) => `${key}: ${String(value)}`)
       .join(" · ")
+  }
+
+  function statusLabel(ok: boolean) {
+    return ok ? "V pořádku" : "Vyžaduje kontrolu"
   }
 
   return (
@@ -416,6 +432,69 @@ function PortalDashboard({
                   ) : null}
                 </article>
               ))}
+            </div>
+          </section>
+        ) : null}
+
+        {operations.length > 0 ? (
+          <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+            <div className="flex items-center gap-3">
+              <GitPullRequest className="h-5 w-5 text-foreground/90" aria-hidden />
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  Provozní kontroly
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Poslední workflow a doménové kontroly načtené server-side.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {operations.map((operation) => {
+                const Icon = operation.label.includes("domén")
+                  ? Globe2
+                  : GitPullRequest
+
+                return (
+                  <article
+                    key={operation.id}
+                    className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex gap-3">
+                        <Icon
+                          className="mt-0.5 h-4 w-4 shrink-0 text-foreground/90"
+                          aria-hidden
+                        />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            {operation.label}
+                          </p>
+                          <h3 className="mt-2 font-display text-base font-semibold text-foreground">
+                            {operation.headline}
+                          </h3>
+                        </div>
+                      </div>
+                      <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                        {statusLabel(operation.ok)}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      {operation.detail}
+                    </p>
+                    {operation.href ? (
+                      <a
+                        href={operation.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        Otevřít detail
+                      </a>
+                    ) : null}
+                  </article>
+                )
+              })}
             </div>
           </section>
         ) : null}
