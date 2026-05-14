@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from .content_quality import check_content_quality
 from .database import (
     database_status,
     list_content_versions,
@@ -127,10 +128,26 @@ class ContentBlocksResponse(BaseModel):
     versions: list[ContentVersionItem] = Field(default_factory=list)
 
 
+class ContentQualityIssueResponse(BaseModel):
+    severity: str
+    code: str
+    message: str
+
+
+class ContentQualityResponse(BaseModel):
+    status: str
+    issues: list[ContentQualityIssueResponse]
+
+
+class ContentCheckRequest(BaseModel):
+    value: str = Field(min_length=1, max_length=4000)
+
+
 class ContentBlockResponse(BaseModel):
     stored: bool
     block: ContentBlockItem | None
     versions: list[ContentVersionItem] = Field(default_factory=list)
+    quality: ContentQualityResponse | None = None
 
 
 class ContentRollbackRequest(BaseModel):
@@ -165,6 +182,18 @@ def require_backend_token(x_fk_backend_token: str | None) -> None:
 
     if x_fk_backend_token != settings.fk_backend_admin_token:
         raise HTTPException(status_code=401, detail="Unauthorized.")
+
+
+def quality_response(value: str) -> ContentQualityResponse:
+    quality = check_content_quality(value)
+
+    return ContentQualityResponse(
+        status=quality.status,
+        issues=[
+            ContentQualityIssueResponse(**issue.__dict__)
+            for issue in quality.issues
+        ],
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -274,9 +303,32 @@ def content_blocks(
 @app.post("/admin/content", response_model=ContentBlockResponse)
 def save_content_block(
     payload: ContentBlockRequest,
+    request: Request,
     x_fk_backend_token: str | None = Header(default=None),
 ) -> ContentBlockResponse:
     require_backend_token(x_fk_backend_token)
+    quality = quality_response(payload.draft_value)
+
+    if payload.publish and quality.status == "blocked":
+        record_audit_event(
+            "content.publish_blocked",
+            actor="admin",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            metadata={
+                "key": payload.key,
+                "label": payload.label,
+                "quality": quality.model_dump(),
+            },
+        )
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Text neprošel kontrolou před publikací.",
+                "quality": quality.model_dump(),
+            },
+        )
+
     block = upsert_content_block(
         key=payload.key,
         label=payload.label,
@@ -284,6 +336,18 @@ def save_content_block(
         draft_value=payload.draft_value,
         publish=payload.publish,
     )
+    record_audit_event(
+        "content.published" if payload.publish else "content.draft_saved",
+        actor="admin",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        metadata={
+            "key": payload.key,
+            "label": payload.label,
+            "area": payload.area,
+            "quality": quality.model_dump(),
+        },
+    )
 
     return ContentBlockResponse(
         stored=block is not None,
@@ -292,16 +356,29 @@ def save_content_block(
             ContentVersionItem(**version.__dict__)
             for version in list_content_versions(limit=30)
         ],
+        quality=quality,
     )
 
 
 @app.post("/admin/content/rollback", response_model=ContentBlockResponse)
 def rollback_content_block(
     payload: ContentRollbackRequest,
+    request: Request,
     x_fk_backend_token: str | None = Header(default=None),
 ) -> ContentBlockResponse:
     require_backend_token(x_fk_backend_token)
     block = rollback_content_version(payload.version_id)
+    record_audit_event(
+        "content.rollback",
+        actor="admin",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        metadata={
+            "version_id": payload.version_id,
+            "key": block.key if block else None,
+            "restored": block is not None,
+        },
+    )
 
     return ContentBlockResponse(
         stored=block is not None,
@@ -311,6 +388,16 @@ def rollback_content_block(
             for version in list_content_versions(limit=30)
         ],
     )
+
+
+@app.post("/admin/content/check", response_model=ContentQualityResponse)
+def check_content_block(
+    payload: ContentCheckRequest,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ContentQualityResponse:
+    require_backend_token(x_fk_backend_token)
+
+    return quality_response(payload.value)
 
 
 @app.get("/content/published", response_model=PublishedContentResponse)

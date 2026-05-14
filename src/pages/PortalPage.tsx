@@ -102,6 +102,15 @@ type ContentVersion = {
   createdAt: string
 }
 
+type ContentQuality = {
+  status: string
+  issues: Array<{
+    severity: string
+    code: string
+    message: string
+  }>
+}
+
 const defaultContentBlocks: ContentBlock[] = [
   {
     key: "hero.lead",
@@ -406,6 +415,8 @@ function PortalDashboard({
   const [contentMode, setContentMode] = useState<"draft" | "published">("draft")
   const [contentMessage, setContentMessage] = useState("")
   const [savingContent, setSavingContent] = useState(false)
+  const [checkingContent, setCheckingContent] = useState(false)
+  const [contentQuality, setContentQuality] = useState<ContentQuality | null>(null)
   const [contentVersions, setContentVersions] = useState<ContentVersion[]>(
     () => overview.contentVersions ?? [],
   )
@@ -454,6 +465,18 @@ function PortalDashboard({
     return ok ? "V pořádku" : "Vyžaduje kontrolu"
   }
 
+  function qualityStatusLabel(status: string) {
+    if (status === "passed") {
+      return "Bez nálezu"
+    }
+
+    if (status === "warning") {
+      return "Doporučení"
+    }
+
+    return "Blokováno"
+  }
+
   function snapshotStatusLabel(status: string) {
     return status === "ok" ? "Stabilní" : "Zhoršený stav"
   }
@@ -494,7 +517,41 @@ function PortalDashboard({
     const next = contentBlocks.find((block) => block.key === key)
     setSelectedContentKey(key)
     setContentDraft(next?.draftValue ?? "")
+    setContentQuality(null)
     setContentMessage("")
+  }
+
+  async function checkContentQuality() {
+    setCheckingContent(true)
+    setContentMessage("")
+
+    try {
+      const response = await fetch("/api/admin/content-check", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: contentDraft }),
+      })
+      const data = await readJson<ContentQuality & { message?: string }>(response)
+
+      if (!response.ok) {
+        setContentMessage(data.message ?? "Kontrola obsahu teď není dostupná.")
+        return
+      }
+
+      setContentQuality(data)
+      setContentMessage(
+        data.status === "blocked"
+          ? "Text je potřeba upravit před publikací."
+          : data.status === "warning"
+            ? "Text lze publikovat, ale kontrola našla doporučení."
+            : "Text prošel kontrolou bez blokujících nálezů.",
+      )
+    } catch {
+      setContentMessage("Kontrola obsahu teď není dostupná. Zkuste to znovu.")
+    } finally {
+      setCheckingContent(false)
+    }
   }
 
   async function saveContentBlock(publish: boolean) {
@@ -536,9 +593,14 @@ function PortalDashboard({
           actor: string
           created_at: string
         }>
+        quality?: ContentQuality
+        message?: string
       }>(response)
 
       if (!response.ok || !data.block) {
+        if (data.quality) {
+          setContentQuality(data.quality)
+        }
         setContentMessage("Obsah se nepodařilo uložit.")
         return
       }
@@ -569,6 +631,9 @@ function PortalDashboard({
             createdAt: version.created_at,
           })),
         )
+      }
+      if (data.quality) {
+        setContentQuality(data.quality)
       }
       setContentDraft(nextBlock.draftValue)
       setContentMessage(
@@ -750,7 +815,10 @@ function PortalDashboard({
                   Draft text
                   <textarea
                     value={contentDraft}
-                    onChange={(event) => setContentDraft(event.target.value)}
+                    onChange={(event) => {
+                      setContentDraft(event.target.value)
+                      setContentQuality(null)
+                    }}
                     rows={7}
                     maxLength={4000}
                     className="mt-2 w-full resize-y rounded-[var(--radius)] border border-border/70 bg-background/50 px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-brand-violet/70"
@@ -872,6 +940,59 @@ function PortalDashboard({
                   </div>
                 </div>
 
+                <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <ShieldCheck className="h-4 w-4" aria-hidden />
+                      Kontrola obsahu
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void checkContentQuality()}
+                      disabled={checkingContent || contentDraft.trim().length === 0}
+                    >
+                      {checkingContent ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" aria-hidden />
+                      )}
+                      Zkontrolovat text
+                    </Button>
+                  </div>
+
+                  {contentQuality ? (
+                    <div className="mt-4">
+                      <span className="inline-flex rounded-full border border-border/70 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                        {qualityStatusLabel(contentQuality.status)}
+                      </span>
+                      {contentQuality.issues.length > 0 ? (
+                        <ul className="mt-3 grid gap-2 text-sm leading-relaxed text-muted-foreground">
+                          {contentQuality.issues.map((issue) => (
+                            <li
+                              key={`${issue.code}-${issue.message}`}
+                              className="rounded-lg border border-border/60 bg-background/25 px-3 py-2"
+                            >
+                              <span className="font-medium text-foreground">
+                                {issue.severity}
+                              </span>{" "}
+                              {issue.message}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                          Kontrola nenašla blokující ani doporučené úpravy.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      Kontrola se spustí ručně nebo automaticky před publikací.
+                    </p>
+                  )}
+                </div>
+
                 {contentMessage ? (
                   <p className="rounded-[var(--radius)] border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
                     {contentMessage}
@@ -895,7 +1016,11 @@ function PortalDashboard({
                   <Button
                     type="button"
                     onClick={() => void saveContentBlock(true)}
-                    disabled={savingContent || contentDraft.trim().length === 0}
+                    disabled={
+                      savingContent ||
+                      contentDraft.trim().length === 0 ||
+                      contentQuality?.status === "blocked"
+                    }
                   >
                     Publikovat snapshot
                   </Button>

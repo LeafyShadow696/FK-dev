@@ -15,5 +15,8 @@ server-side session, keep protected backend writes behind `FK_BACKEND_ADMIN_TOKE
 and run the required checks before shipping changes. Content studio stores
 private draft/live-preview content blocks through protected `/admin/content`
 backend endpoints. Published version history and rollback use
-`/admin/content/rollback`. Selected public copy can hydrate through `/api/content`,
-but public components must keep checked-in fallback text.
+`/admin/content/rollback`. Protected `/admin/content/check` and automatic
+publish checks block unsupported guarantee-style claims and invalid lengths
+before selected copy is published, and content writes are audit logged. Selected
+public copy can hydrate through `/api/content`, but public components must keep
+checked-in fallback text.

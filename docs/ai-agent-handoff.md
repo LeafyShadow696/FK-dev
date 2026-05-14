@@ -63,6 +63,11 @@ Admin and backend:
   `admin_content_blocks` in PostgreSQL for private draft editing, live preview,
   and published content snapshots. Version history and rollback use
   `admin_content_versions` and `/admin/content/rollback`.
+- Content publishing is protected by `/admin/content/check` and the same
+  automatic check inside `POST /admin/content` when `publish` is true. It blocks
+  unsupported guarantee-style claims and invalid lengths, returns readability
+  warnings, and records audit events for draft saves, publishes, blocked
+  publishes, and rollbacks.
 - Selected public copy can hydrate from `/api/content`, which proxies public
   FastAPI `/content/published`. Public React components must keep checked-in
   fallback text so the landing page remains stable without backend content.

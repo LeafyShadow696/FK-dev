@@ -58,6 +58,14 @@ same-origin `/api/content` proxy, which reads the public FastAPI
 `/content/published` endpoint. The React components must keep checked-in
 fallback text so the landing page remains stable if the backend is unavailable.
 
+Content publishing has a protected quality gate. The private portal can call
+`/admin/content/check` through the Vercel admin API before publishing, and
+`POST /admin/content` runs the same check automatically when `publish` is true.
+The check blocks very short or oversized copy and unsupported guarantee-style
+claims, and returns warnings for spacing, punctuation, or dense text. Draft
+saves, successful publishes, blocked publishes, and rollbacks are written to the
+audit log.
+
 ## Storage
 
 Do not store secret env files in Git.

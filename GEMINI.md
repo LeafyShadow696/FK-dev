@@ -46,8 +46,11 @@ and item limits for audit logs and provider snapshots. Content studio stores
 private draft/live-preview content blocks through protected FastAPI
 `/admin/content` endpoints and `admin_content_blocks`. Published version history
 and rollback use `admin_content_versions` and `/admin/content/rollback`.
-Selected public copy can hydrate through `/api/content`, but public components
-must keep checked-in fallback text.
+Protected `/admin/content/check` and automatic publish checks block unsupported
+guarantee-style claims and invalid lengths before selected copy is published.
+Content draft saves, publishes, blocked publishes, and rollbacks are audit
+logged. Selected public copy can hydrate through `/api/content`, but public
+components must keep checked-in fallback text.
 
 ## Recovery
 

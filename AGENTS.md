@@ -224,6 +224,8 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - PostgreSQL-backed provider status snapshots for the admin portal history view
 - PostgreSQL-backed content blocks for private draft/live-preview editing
 - PostgreSQL-backed content version history and rollback for published snapshots
+- protected content quality checks before publishing selected copy
+- audit events for content draft saves, publishes, blocked publishes, and rollbacks
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`
@@ -286,7 +288,11 @@ The portal includes a private Content studio backed by protected
 table. It supports draft editing, live preview, and published content snapshots
 for selected landing-page copy. Published version history is stored in
 `admin_content_versions`, and rollback is available through protected
-`/admin/content/rollback`.
+`/admin/content/rollback`. The protected `/admin/content/check` endpoint runs a
+conservative content quality gate before publishing. It blocks copy that is too
+short, too long, or uses unsupported guarantee-style claims, and it returns
+warnings for formatting or readability issues. Backend writes record audit
+events for draft saves, successful publishes, blocked publishes, and rollbacks.
 
 Public pages may hydrate selected copy through same-origin `/api/content`, which
 proxies the public FastAPI `/content/published` endpoint. Every public component

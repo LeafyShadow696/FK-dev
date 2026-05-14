@@ -66,6 +66,15 @@ type ContentVersion = {
   createdAt: string
 }
 
+type ContentQuality = {
+  status: string
+  issues: Array<{
+    severity: string
+    code: string
+    message: string
+  }>
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -703,6 +712,28 @@ async function saveBackendContentBlock(input: {
   })
 }
 
+async function checkBackendContent(value: string) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(`${backendUrl.replace(/\/$/, "")}/admin/content/check`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-FK-Backend-Token": backendToken,
+    },
+    body: JSON.stringify({
+      value,
+    }),
+  })
+}
+
 async function rollbackBackendContentBlock(versionId: string) {
   const backendUrl =
     getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
@@ -1025,12 +1056,53 @@ export default async function handler(req: any, res: any) {
 
     if (!saved.ok) {
       sendJson(res, saved.status || 502, {
-        message: "Nepodařilo se uložit obsah do backendu.",
+        message:
+          saved.data?.detail?.message ??
+          "Nepodařilo se uložit obsah do backendu.",
+        quality: saved.data?.detail?.quality,
       })
       return
     }
 
     sendJson(res, 200, saved.data)
+    return
+  }
+
+  if (action === "content-check") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const value = typeof body.value === "string" ? body.value.trim() : ""
+
+    if (value.length < 1 || value.length > 4000) {
+      sendJson(res, 400, { message: "Text nemá platný formát." })
+      return
+    }
+
+    const checked = await checkBackendContent(value)
+
+    if (!checked.ok) {
+      sendJson(res, checked.status || 502, {
+        message: "Nepodařilo se zkontrolovat obsah.",
+      })
+      return
+    }
+
+    sendJson(res, 200, checked.data)
     return
   }
 
