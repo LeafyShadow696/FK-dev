@@ -3,7 +3,13 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from .database import database_status, list_audit_events, record_audit_event
+from .database import (
+    database_status,
+    list_audit_events,
+    list_provider_snapshots,
+    record_audit_event,
+    record_provider_snapshot,
+)
 from .settings import get_settings
 
 
@@ -57,6 +63,31 @@ class AuditEventItem(BaseModel):
 
 class AuditEventsResponse(BaseModel):
     events: list[AuditEventItem]
+
+
+class ProviderSnapshotRequest(BaseModel):
+    source: str
+    status: str
+    summary: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProviderSnapshotResponse(BaseModel):
+    stored: bool
+    snapshot_id: str | None
+
+
+class ProviderSnapshotItem(BaseModel):
+    id: str
+    source: str
+    status: str
+    summary: str
+    payload: dict[str, Any]
+    created_at: str
+
+
+class ProviderSnapshotsResponse(BaseModel):
+    snapshots: list[ProviderSnapshotItem]
 
 
 app = FastAPI(
@@ -139,6 +170,40 @@ def audit_events(
     ]
 
     return AuditEventsResponse(events=events)
+
+
+@app.post("/admin/provider-snapshots", response_model=ProviderSnapshotResponse)
+def create_provider_snapshot(
+    payload: ProviderSnapshotRequest,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ProviderSnapshotResponse:
+    require_backend_token(x_fk_backend_token)
+
+    snapshot_id = record_provider_snapshot(
+        source=payload.source,
+        status=payload.status,
+        summary=payload.summary,
+        payload=payload.payload,
+    )
+
+    return ProviderSnapshotResponse(
+        stored=bool(snapshot_id),
+        snapshot_id=snapshot_id,
+    )
+
+
+@app.get("/admin/provider-snapshots", response_model=ProviderSnapshotsResponse)
+def provider_snapshots(
+    limit: int = Query(default=10, ge=1, le=50),
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ProviderSnapshotsResponse:
+    require_backend_token(x_fk_backend_token)
+    snapshots = [
+        ProviderSnapshotItem(**snapshot.__dict__)
+        for snapshot in list_provider_snapshots(limit=limit)
+    ]
+
+    return ProviderSnapshotsResponse(snapshots=snapshots)
 
 
 @app.get("/integrations", response_model=list[IntegrationStatus])

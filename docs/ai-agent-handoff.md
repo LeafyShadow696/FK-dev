@@ -54,6 +54,9 @@ Admin and backend:
   only for authenticated admin sessions.
 - `/api/admin/overview` also includes read-only `operations` for Vercel domains
   and GitHub Actions workflow runs. Provider tokens must stay server-side.
+- Authenticated `/api/admin/overview` loads store provider snapshots through the
+  protected FastAPI `/admin/provider-snapshots` endpoint and returns recent
+  `providerSnapshots` for the portal history view.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into

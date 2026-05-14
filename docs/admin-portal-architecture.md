@@ -41,6 +41,10 @@ protected by `FK_BACKEND_ADMIN_TOKEN` for both recent-event reads and writes.
 The public browser never calls this backend endpoint directly; the Vercel admin
 API proxies recent audit events only after a valid admin session.
 
+Provider status history is stored in `admin_provider_snapshots`. The Vercel admin
+API writes an aggregated snapshot after authenticated overview reads and returns
+the latest snapshots for the portal history section.
+
 ## Storage
 
 Do not store secret env files in Git.

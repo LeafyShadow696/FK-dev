@@ -38,6 +38,15 @@ type OperationCheck = {
   checkedAt: string
 }
 
+type ProviderSnapshot = {
+  id: string
+  source: string
+  status: string
+  summary: string
+  payload: Record<string, unknown>
+  createdAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -502,6 +511,94 @@ async function backendAuditEvents(): Promise<AuditLogItem[]> {
   }
 }
 
+async function writeProviderSnapshot(
+  providers: ProviderSummary[],
+  operations: OperationCheck[],
+) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return null
+  }
+
+  const checks = [...providers, ...operations]
+  const failing = checks.filter((item) => !item.ok)
+  const status = failing.length === 0 ? "ok" : "degraded"
+  const summary =
+    failing.length === 0
+      ? `${checks.length} kontrol bez zjevného problému`
+      : `${failing.length} z ${checks.length} kontrol vyžaduje pozornost`
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/provider-snapshots`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+        body: JSON.stringify({
+          source: "admin_overview",
+          status,
+          summary,
+          payload: {
+            providers,
+            operations,
+          },
+        }),
+      },
+    )
+
+    return response.ok ? response.data : null
+  } catch {
+    return null
+  }
+}
+
+async function backendProviderSnapshots(): Promise<ProviderSnapshot[]> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return []
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/provider-snapshots?limit=8`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.snapshots)) {
+      return []
+    }
+
+    return response.data.snapshots.map((snapshot: any) => ({
+      id: String(snapshot.id ?? ""),
+      source: String(snapshot.source ?? "unknown"),
+      status: String(snapshot.status ?? "unknown"),
+      summary: String(snapshot.summary ?? ""),
+      payload:
+        snapshot.payload && typeof snapshot.payload === "object"
+          ? snapshot.payload
+          : {},
+      createdAt: String(snapshot.created_at ?? ""),
+    }))
+  } catch {
+    return []
+  }
+}
+
 async function githubWorkflowChecks(): Promise<OperationCheck[]> {
   const checkedAt = new Date().toISOString()
   const token = getAnySecret(["GITHUB_TOKEN", "GITHUB_API_KEY"])
@@ -772,6 +869,8 @@ export default async function handler(req: any, res: any) {
       backendAuditEvents(),
       operationChecks(),
     ])
+    await writeProviderSnapshot(providers, operations)
+    const providerSnapshots = await backendProviderSnapshots()
 
     sendJson(res, 200, {
       generatedAt: new Date().toISOString(),
@@ -785,12 +884,13 @@ export default async function handler(req: any, res: any) {
       providers,
       auditLogs,
       operations,
+      providerSnapshots,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
         "Rozšířit Vercel stav o build logy a Web Analytics.",
-        "Přidat historické snapshoty provider stavů do PostgreSQL.",
         "Doplnit filtr a stránkování audit logu.",
+        "Přidat filtr a agregace historie provozních snapshotů.",
         "Připravit první bezpečné content snapshoty landing page.",
       ],
     })

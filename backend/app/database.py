@@ -33,6 +33,16 @@ class AuditEvent:
     created_at: str
 
 
+@dataclass(frozen=True)
+class ProviderSnapshot:
+    id: str
+    source: str
+    status: str
+    summary: str
+    payload: dict[str, Any]
+    created_at: str
+
+
 _engine: Engine | None = None
 
 
@@ -95,6 +105,18 @@ def init_database(engine: Engine | None = None) -> bool:
               updated_at timestamptz NOT NULL DEFAULT now()
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS admin_provider_snapshots (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              source text NOT NULL,
+              status text NOT NULL,
+              summary text NOT NULL,
+              payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+              created_at timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_provider_snapshots_created_at ON admin_provider_snapshots (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_provider_snapshots_source ON admin_provider_snapshots (source)",
         ]
     else:
         statements = [
@@ -118,6 +140,18 @@ def init_database(engine: Engine | None = None) -> bool:
               updated_at text NOT NULL
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS admin_provider_snapshots (
+              id text PRIMARY KEY,
+              source text NOT NULL,
+              status text NOT NULL,
+              summary text NOT NULL,
+              payload text NOT NULL DEFAULT '{}',
+              created_at text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_provider_snapshots_created_at ON admin_provider_snapshots (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_provider_snapshots_source ON admin_provider_snapshots (source)",
         ]
 
     with engine.begin() as connection:
@@ -280,3 +314,111 @@ def list_audit_events(limit: int = 10) -> list[AuditEvent]:
             )
 
     return events
+
+
+def record_provider_snapshot(
+    *,
+    source: str,
+    status: str,
+    summary: str,
+    payload: dict[str, Any] | None = None,
+) -> str | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    snapshot_id = str(uuid.uuid4())
+    body = payload or {}
+
+    if engine.dialect.name == "postgresql":
+        statement = text(
+            """
+            INSERT INTO admin_provider_snapshots
+              (id, source, status, summary, payload)
+            VALUES
+              (:id, :source, :status, :summary, CAST(:payload AS jsonb))
+            """,
+        )
+        params: dict[str, Any] = {
+            "id": snapshot_id,
+            "source": source,
+            "status": status,
+            "summary": summary,
+            "payload": json.dumps(body),
+        }
+    else:
+        statement = text(
+            """
+            INSERT INTO admin_provider_snapshots
+              (id, source, status, summary, payload, created_at)
+            VALUES
+              (:id, :source, :status, :summary, :payload, :created_at)
+            """,
+        )
+        params = {
+            "id": snapshot_id,
+            "source": source,
+            "status": status,
+            "summary": summary,
+            "payload": json.dumps(body),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+    with engine.begin() as connection:
+        connection.execute(statement, params)
+
+    return snapshot_id
+
+
+def list_provider_snapshots(limit: int = 10) -> list[ProviderSnapshot]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+
+    safe_limit = max(1, min(limit, 50))
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT id, source, status, summary, payload, created_at
+                FROM admin_provider_snapshots
+                ORDER BY created_at DESC
+                LIMIT :limit
+                """,
+            ),
+            {"limit": safe_limit},
+        ).mappings()
+
+        snapshots: list[ProviderSnapshot] = []
+        for row in rows:
+            payload = row["payload"]
+
+            if isinstance(payload, str):
+                try:
+                    parsed_payload = json.loads(payload)
+                except json.JSONDecodeError:
+                    parsed_payload = {}
+            elif isinstance(payload, dict):
+                parsed_payload = payload
+            else:
+                parsed_payload = {}
+
+            snapshots.append(
+                ProviderSnapshot(
+                    id=str(row["id"]),
+                    source=str(row["source"]),
+                    status=str(row["status"]),
+                    summary=str(row["summary"]),
+                    payload=parsed_payload,
+                    created_at=str(row["created_at"]),
+                ),
+            )
+
+    return snapshots

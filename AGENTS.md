@@ -221,6 +221,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - integration status placeholders for Vercel, GitHub, Render, Railway, database, storage, and AI
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - read-only operational checks for Vercel domains and GitHub Actions workflow runs
+- PostgreSQL-backed provider status snapshots for the admin portal history view
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`
@@ -270,6 +271,11 @@ inputs only; do not commit or serve them.
 The Vercel admin API also includes read-only `operations` in `/api/admin/overview`
 for GitHub Actions workflow runs and Vercel project domains. These checks must
 remain server-side because they use provider tokens.
+
+When `/api/admin/overview` is loaded by an authenticated admin, the Vercel API
+stores an aggregated provider snapshot in the protected FastAPI
+`/admin/provider-snapshots` endpoint and returns recent `providerSnapshots` for
+the portal history view.
 
 ## Provider and Deployment Snapshot
 

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
+  Activity,
   ArrowRight,
   CheckCircle2,
   Clock3,
@@ -62,6 +63,14 @@ type PortalOverview = {
     detail: string
     href?: string
     checkedAt: string
+  }>
+  providerSnapshots?: Array<{
+    id: string
+    source: string
+    status: string
+    summary: string
+    payload: Record<string, unknown>
+    createdAt: string
   }>
   configuredIntegrations: number
   checklist: string[]
@@ -316,6 +325,7 @@ function PortalDashboard({
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
+  const providerSnapshots = overview.providerSnapshots ?? []
 
   function formatAuditDate(value: string) {
     const date = new Date(value)
@@ -345,6 +355,10 @@ function PortalDashboard({
 
   function statusLabel(ok: boolean) {
     return ok ? "V pořádku" : "Vyžaduje kontrolu"
+  }
+
+  function snapshotStatusLabel(status: string) {
+    return status === "ok" ? "Stabilní" : "Zhoršený stav"
   }
 
   return (
@@ -495,6 +509,50 @@ function PortalDashboard({
                   </article>
                 )
               })}
+            </div>
+          </section>
+        ) : null}
+
+        {providerSnapshots.length > 0 ? (
+          <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-center gap-3">
+                <Activity className="h-5 w-5 text-foreground/90" aria-hidden />
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-foreground">
+                    Historie provozu
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Poslední uložené snapshoty provider kontrol v PostgreSQL.
+                  </p>
+                </div>
+              </div>
+              <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                {providerSnapshots.length} snapshotů
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {providerSnapshots.map((snapshot) => (
+                <article
+                  key={snapshot.id}
+                  className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {snapshot.source} · {formatAuditDate(snapshot.createdAt)}
+                      </p>
+                      <h3 className="mt-2 font-display text-base font-semibold text-foreground">
+                        {snapshot.summary}
+                      </h3>
+                    </div>
+                    <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                      {snapshotStatusLabel(snapshot.status)}
+                    </span>
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
         ) : null}
