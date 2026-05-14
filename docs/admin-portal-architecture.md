@@ -34,6 +34,11 @@ Use PostgreSQL as the default database. It is the safest baseline for:
 - future CRM-like records
 - relational data that should remain queryable
 
+The first implemented backend database layer initializes `admin_audit_logs` and
+`admin_settings` through the FastAPI service. The read-only `/admin/status`
+endpoint reports connection and audit-log readiness. The write path
+`/admin/audit` is intentionally protected by `FK_BACKEND_ADMIN_TOKEN`.
+
 ## Storage
 
 Do not store secret env files in Git.

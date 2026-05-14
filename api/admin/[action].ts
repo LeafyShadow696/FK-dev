@@ -373,13 +373,31 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
   const checkedAt = new Date().toISOString()
   const backendUrl =
     getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const normalizedBackendUrl = backendUrl.replace(/\/$/, "")
 
   try {
-    const health = await fetchJson(`${backendUrl.replace(/\/$/, "")}/health`, {
-      headers: {
-        Accept: "application/json",
-      },
-    })
+    const [health, adminStatus] = await Promise.all([
+      fetchJson(`${normalizedBackendUrl}/health`, {
+        headers: {
+          Accept: "application/json",
+        },
+      }),
+      fetchJson(`${normalizedBackendUrl}/admin/status`, {
+        headers: {
+          Accept: "application/json",
+        },
+      }),
+    ])
+    const database = adminStatus.data?.database
+    const databaseDetail = adminStatus.ok
+      ? `Databáze: ${
+          database?.connected
+            ? `online, audit log ${Number(database.audit_log_count ?? 0)} záznamů`
+            : database?.configured
+              ? "nastavená, ale nedostupná"
+              : "není nastavená"
+        }`
+      : "Admin status není dostupný"
 
     if (!health.ok) {
       return {
@@ -387,7 +405,7 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
         label: "Python backend",
         ok: false,
         headline: "Backend nevrátil platný health stav",
-        detail: `Health endpoint status ${health.status}.`,
+        detail: `Health endpoint status ${health.status}. ${databaseDetail}.`,
         href: backendUrl,
         checkedAt,
       }
@@ -396,11 +414,11 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
     return {
       id: "render-backend",
       label: "Python backend",
-      ok: health.data?.status === "ok",
+      ok: health.data?.status === "ok" && (adminStatus.ok || adminStatus.status === 404),
       headline: String(health.data?.service ?? "fkdev-admin-api"),
       detail: `Render FastAPI · ${String(
         health.data?.public_site_url ?? "https://fkdev.xyz",
-      )}`,
+      )}. ${databaseDetail}.`,
       href: backendUrl,
       checkedAt,
     }
@@ -410,7 +428,7 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
       label: "Python backend",
       ok: false,
       headline: "Backend je nedostupný",
-      detail: "Nepodařilo se načíst Render health endpoint v časovém limitu.",
+      detail: "Nepodařilo se načíst Render health/admin status endpoint v časovém limitu.",
       href: backendUrl,
       checkedAt,
     }
@@ -538,10 +556,11 @@ export default async function handler(req: any, res: any) {
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
-        "Doplnit databázi pro audit log a nastavení portálu.",
+        "Ověřit Render Postgres přes backend endpoint /admin/status.",
+        "Nastavit FK_BACKEND_ADMIN_TOKEN pro chráněné backend audit zápisy.",
         "Rozšířit GitHub stav o workflow a poslední běhy CI.",
         "Rozšířit Vercel stav o domény, build logy a Web Analytics.",
-        "Napojit Python backend na Render a připravit perzistentní API.",
+        "Přidat první read-only admin data z PostgreSQL do portálu.",
       ],
     })
     return

@@ -32,6 +32,8 @@ services:
         sync: false
       - key: FK_STORAGE_CONNECTION
         sync: false
+      - key: FK_BACKEND_ADMIN_TOKEN
+        sync: false
 
 databases:
   - name: fkdev-admin-db

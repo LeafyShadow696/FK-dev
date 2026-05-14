@@ -10,6 +10,13 @@ Recommended runtime:
 - PostgreSQL for persistent data and audit logs
 - External object storage for private files and exports
 
+Current backend endpoints:
+
+- `GET /health` - lightweight service health.
+- `GET /integrations` - configured provider summary.
+- `GET /admin/status` - read-only database and audit-log readiness.
+- `POST /admin/audit` - protected audit event write; requires `FK_BACKEND_ADMIN_TOKEN`.
+
 Local run:
 
 ```powershell

@@ -47,7 +47,7 @@ demo app.
 - Production deployment on Vercel
 - Vercel serverless admin API under `api/admin/[action].ts`
 - Python FastAPI backend under `backend/`, deployed on Render
-- Render Postgres for future persistent admin data
+- Render Postgres for admin status, audit logs, settings, and future persistent admin data
 
 ## Important Commands
 
@@ -109,6 +109,7 @@ python -m venv .venv
   - legal/privacy/cookies/terms pages
 - `api/admin/[action].ts` - Vercel serverless admin API for login, session, logout, overview, and provider status.
 - `backend/` - Python FastAPI admin API intended for Render.
+- `backend/app/database.py` - SQLAlchemy database initialization, status checks, and audit-log writes.
 - `docs/admin-portal-architecture.md` - backend, database, storage, and secret-handling plan.
 - `docs/ai-agent-handoff.md` - full AI-agent handoff and disaster-recovery guide.
 - `render.yaml` - Render Blueprint for the Python admin API and Render Postgres.
@@ -220,6 +221,8 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - integration status placeholders for Vercel, GitHub, Render, Railway, database, storage, and AI
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - Python/FastAPI backend integration summary
+- Render backend database status through `/admin/status`
+- protected backend audit event endpoint through `/admin/audit`
 - Render backend health visibility through `RENDER_BACKEND_URL`
 
 Required server-side env vars before production admin login can work:
@@ -240,6 +243,7 @@ Provider integration env vars:
 - `DATABASE_URL`
 - `FK_STORAGE_CONNECTION`
 - `RENDER_BACKEND_URL` - currently `https://fkdev-admin-api.onrender.com`
+- `FK_BACKEND_ADMIN_TOKEN` - private token for protected Python backend admin writes.
 - `OPENAI_API_KEY`
 - `GEMINI_API_KEY`
 - `TAILNET_UNIQUE_ID`
@@ -254,9 +258,11 @@ server-side session. Do not add provider tokens to frontend code. Do not add
 
 The Python/FastAPI backend is deployed on Render as `fkdev-admin-api` at
 `https://fkdev-admin-api.onrender.com`. Render Postgres is `fkdev-admin-db`.
-PostgreSQL is intended for persistent data and audit logs, and object storage is
-intended for non-secret uploaded files. Treat env files as secret inputs only; do
-not commit or serve them.
+PostgreSQL is used as the baseline for admin audit logs, settings, and future
+read-only portal data. The backend exposes a read-only `/admin/status` endpoint
+for database health and a protected `/admin/audit` write endpoint that requires
+`FK_BACKEND_ADMIN_TOKEN`. Object storage is intended for non-secret uploaded
+files. Treat env files as secret inputs only; do not commit or serve them.
 
 ## Provider and Deployment Snapshot
 
@@ -270,6 +276,7 @@ Current production assumptions:
 - Render backend service: `fkdev-admin-api`
 - Render backend URL: `https://fkdev-admin-api.onrender.com`
 - Render Postgres: `fkdev-admin-db`
+- Backend database status endpoint: `https://fkdev-admin-api.onrender.com/admin/status`
 
 Provider state can drift. Verify live state before making domain, deployment,
 database, or billing-affecting changes.

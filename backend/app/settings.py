@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
     fk_storage_connection: str | None = None
+    fk_backend_admin_token: str | None = None
 
 
 @lru_cache

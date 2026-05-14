@@ -32,6 +32,7 @@ Read these files before editing:
 - `src/data/adminPortal.ts`
 - `api/admin/[action].ts`
 - `backend/app/main.py`
+- `backend/app/database.py`
 - `tests/e2e/smoke.spec.ts`
 - `render.yaml`
 

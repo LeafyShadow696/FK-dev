@@ -47,6 +47,9 @@ Admin and backend:
 - Render backend URL: `https://fkdev-admin-api.onrender.com`
 - Render backend service: `fkdev-admin-api`
 - Render Postgres: `fkdev-admin-db`
+- `backend/app/database.py` initializes PostgreSQL tables and reports database status.
+- `/admin/status` is a read-only backend status endpoint.
+- `/admin/audit` is a protected backend write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into
@@ -65,6 +68,7 @@ Start with:
 - `src/data/adminPortal.ts`
 - `api/admin/[action].ts`
 - `backend/app/main.py`
+- `backend/app/database.py`
 - `tests/e2e/smoke.spec.ts`
 - `render.yaml`
 - `vercel.json`
@@ -110,6 +114,7 @@ Backend health:
 
 ```powershell
 Invoke-RestMethod -Uri 'https://fkdev-admin-api.onrender.com/health'
+Invoke-RestMethod -Uri 'https://fkdev-admin-api.onrender.com/admin/status'
 ```
 
 Public AI summary:
@@ -154,6 +159,7 @@ Representative env var names:
 
 - `FK_ADMIN_ACCESS_KEY`
 - `FK_ADMIN_SESSION_SECRET`
+- `FK_BACKEND_ADMIN_TOKEN`
 - `VERCEL_API_TOKEN`
 - `VERCEL_TOKEN`
 - `VERCEL_API_KEY`
