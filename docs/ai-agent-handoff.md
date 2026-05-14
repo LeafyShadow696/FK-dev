@@ -61,8 +61,11 @@ Admin and backend:
   server-side loading.
 - Content studio uses protected FastAPI `/admin/content` endpoints and
   `admin_content_blocks` in PostgreSQL for private draft editing, live preview,
-  and published content snapshots. Public pages still render checked-in content
-  until a separate publish workflow is approved.
+  and published content snapshots. Version history and rollback use
+  `admin_content_versions` and `/admin/content/rollback`.
+- Selected public copy can hydrate from `/api/content`, which proxies public
+  FastAPI `/content/published`. Public React components must keep checked-in
+  fallback text so the landing page remains stable without backend content.
 
 The current backend is intentionally small. Future admin work should keep the
 public landing page fast and stable while moving real admin operations into

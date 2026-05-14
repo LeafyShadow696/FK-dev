@@ -8,6 +8,7 @@ import {
   FileText,
   GitPullRequest,
   Globe2,
+  History,
   KeyRound,
   Loader2,
   LockKeyhole,
@@ -15,6 +16,7 @@ import {
   ScrollText,
   Server,
   ShieldCheck,
+  RotateCcw,
   Save,
   Wifi,
 } from "lucide-react"
@@ -76,6 +78,7 @@ type PortalOverview = {
     createdAt: string
   }>
   contentBlocks?: Array<ContentBlock>
+  contentVersions?: Array<ContentVersion>
   configuredIntegrations: number
   checklist: string[]
 }
@@ -88,6 +91,15 @@ type ContentBlock = {
   publishedValue: string
   updatedAt: string
   publishedAt: string | null
+}
+
+type ContentVersion = {
+  id: string
+  blockKey: string
+  value: string
+  action: string
+  actor: string
+  createdAt: string
 }
 
 const defaultContentBlocks: ContentBlock[] = [
@@ -394,6 +406,10 @@ function PortalDashboard({
   const [contentMode, setContentMode] = useState<"draft" | "published">("draft")
   const [contentMessage, setContentMessage] = useState("")
   const [savingContent, setSavingContent] = useState(false)
+  const [contentVersions, setContentVersions] = useState<ContentVersion[]>(
+    () => overview.contentVersions ?? [],
+  )
+  const [rollingBackVersionId, setRollingBackVersionId] = useState("")
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
@@ -401,6 +417,12 @@ function PortalDashboard({
   const selectedContent =
     contentBlocks.find((block) => block.key === selectedContentKey) ??
     contentBlocks[0]
+  const selectedVersions = contentVersions.filter(
+    (version) => version.blockKey === selectedContent?.key,
+  )
+  const hasContentDiff =
+    Boolean(selectedContent) &&
+    contentDraft.trim() !== selectedContent.publishedValue.trim()
 
   function formatAuditDate(value: string) {
     const date = new Date(value)
@@ -506,6 +528,14 @@ function PortalDashboard({
           updated_at: string
           published_at: string | null
         }
+        versions?: Array<{
+          id: string
+          block_key: string
+          value: string
+          action: string
+          actor: string
+          created_at: string
+        }>
       }>(response)
 
       if (!response.ok || !data.block) {
@@ -528,6 +558,18 @@ function PortalDashboard({
           block.key === nextBlock.key ? nextBlock : block,
         ),
       )
+      if (Array.isArray(data.versions)) {
+        setContentVersions(
+          data.versions.map((version) => ({
+            id: version.id,
+            blockKey: version.block_key,
+            value: version.value,
+            action: version.action,
+            actor: version.actor,
+            createdAt: version.created_at,
+          })),
+        )
+      }
       setContentDraft(nextBlock.draftValue)
       setContentMessage(
         publish
@@ -538,6 +580,80 @@ function PortalDashboard({
       setContentMessage("Admin API teď neuložilo obsah. Zkuste to znovu.")
     } finally {
       setSavingContent(false)
+    }
+  }
+
+  async function rollbackContentVersion(versionId: string) {
+    setRollingBackVersionId(versionId)
+    setContentMessage("")
+
+    try {
+      const response = await fetch("/api/admin/content-rollback", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId }),
+      })
+      const data = await readJson<{
+        block?: {
+          key: string
+          label: string
+          area: string
+          draft_value: string
+          published_value: string
+          updated_at: string
+          published_at: string | null
+        }
+        versions?: Array<{
+          id: string
+          block_key: string
+          value: string
+          action: string
+          actor: string
+          created_at: string
+        }>
+      }>(response)
+
+      if (!response.ok || !data.block) {
+        setContentMessage("Publikovanou verzi se nepodařilo obnovit.")
+        return
+      }
+
+      const nextBlock: ContentBlock = {
+        key: data.block.key,
+        label: data.block.label,
+        area: data.block.area,
+        draftValue: data.block.draft_value,
+        publishedValue: data.block.published_value,
+        updatedAt: data.block.updated_at,
+        publishedAt: data.block.published_at,
+      }
+
+      setContentBlocks((current) =>
+        current.map((block) =>
+          block.key === nextBlock.key ? nextBlock : block,
+        ),
+      )
+      if (Array.isArray(data.versions)) {
+        setContentVersions(
+          data.versions.map((version) => ({
+            id: version.id,
+            blockKey: version.block_key,
+            value: version.value,
+            action: version.action,
+            actor: version.actor,
+            createdAt: version.created_at,
+          })),
+        )
+      }
+      setSelectedContentKey(nextBlock.key)
+      setContentDraft(nextBlock.draftValue)
+      setContentMode("published")
+      setContentMessage("Vybraná verze je obnovená jako publikovaný snapshot.")
+    } catch {
+      setContentMessage("Rollback teď není dostupný. Zkuste to znovu.")
+    } finally {
+      setRollingBackVersionId("")
     }
   }
 
@@ -683,6 +799,77 @@ function PortalDashboard({
                       ? formatAuditDate(selectedContent.updatedAt)
                       : "zatím jen výchozí lokální návrh"}
                   </p>
+                </div>
+
+                <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <History className="h-4 w-4" aria-hidden />
+                    Publikační historie
+                  </div>
+
+                  {hasContentDiff ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-lg border border-border/60 bg-background/25 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Publikováno
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                          {selectedContent.publishedValue || "Bez publikované verze."}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-background/25 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Draft
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-foreground/90">
+                          {contentDraft}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      Draft odpovídá aktuálně publikovanému snapshotu.
+                    </p>
+                  )}
+
+                  <div className="mt-4 grid gap-3">
+                    {selectedVersions.length > 0 ? (
+                      selectedVersions.slice(0, 5).map((version) => (
+                        <article
+                          key={version.id}
+                          className="rounded-lg border border-border/60 bg-background/25 p-3"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                                {version.action} · {formatAuditDate(version.createdAt)}
+                              </p>
+                              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                {version.value}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void rollbackContentVersion(version.id)}
+                              disabled={Boolean(rollingBackVersionId)}
+                            >
+                              {rollingBackVersionId === version.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                              ) : (
+                                <RotateCcw className="h-4 w-4" aria-hidden />
+                              )}
+                              Obnovit
+                            </Button>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="rounded-lg border border-border/60 bg-background/25 p-3 text-sm leading-relaxed text-muted-foreground">
+                        Historie se vytvoří po první publikaci snapshotu.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {contentMessage ? (

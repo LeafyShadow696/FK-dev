@@ -6,8 +6,14 @@ import {
 } from "@/components/ui/Button"
 import { AmbientBackground } from "@/components/three/AmbientBackground"
 import { business } from "@/data/business"
+import { usePublishedContent } from "@/hooks/usePublishedContent"
 
 export function Hero() {
+  const publishedContent = usePublishedContent()
+  const heroLead =
+    publishedContent["hero.lead"] ||
+    "Navrhuji a stavím weby, PWA, interní nástroje a automatizace pro podnikatele a menší firmy, které potřebují jasný výstup, rychlé spuštění a řešení použitelné i po předání."
+
   return (
     <section className="relative isolate flex min-h-[100svh] items-center overflow-hidden pt-24">
       <AmbientBackground />
@@ -33,9 +39,7 @@ export function Hero() {
           </p>
 
           <p className="mt-8 max-w-2xl text-pretty text-base leading-relaxed text-foreground/90 sm:text-lg">
-            Navrhuji a stavím weby, PWA, interní nástroje a automatizace pro
-            podnikatele a menší firmy, které potřebují jasný výstup, rychlé
-            spuštění a řešení použitelné i po předání.
+            {heroLead}
           </p>
           <p className="mt-3 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
             Pomohu vám převést nápad, nefunkční proces nebo technickou nejistotu

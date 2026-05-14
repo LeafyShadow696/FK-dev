@@ -51,6 +51,13 @@ preview, and store a published snapshot. The public site is not switched to
 database-backed content yet; published content blocks are the controlled staging
 layer for a future publish workflow.
 
+Published content versions are stored in `admin_content_versions`. The private
+portal can compare draft and published text, review recent versions, and roll
+back to a selected version. Public pages may hydrate selected copy from the
+same-origin `/api/content` proxy, which reads the public FastAPI
+`/content/published` endpoint. The React components must keep checked-in
+fallback text so the landing page remains stable if the backend is unavailable.
+
 ## Storage
 
 Do not store secret env files in Git.

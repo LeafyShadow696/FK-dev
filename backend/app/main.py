@@ -5,11 +5,14 @@ from pydantic import BaseModel, Field
 
 from .database import (
     database_status,
+    list_content_versions,
     list_content_blocks,
     list_audit_events,
     list_provider_snapshots,
+    published_content_values,
     record_audit_event,
     record_provider_snapshot,
+    rollback_content_version,
     upsert_content_block,
 )
 from .settings import get_settings
@@ -110,13 +113,32 @@ class ContentBlockItem(BaseModel):
     published_at: str | None
 
 
+class ContentVersionItem(BaseModel):
+    id: str
+    block_key: str
+    value: str
+    action: str
+    actor: str
+    created_at: str
+
+
 class ContentBlocksResponse(BaseModel):
     blocks: list[ContentBlockItem]
+    versions: list[ContentVersionItem] = Field(default_factory=list)
 
 
 class ContentBlockResponse(BaseModel):
     stored: bool
     block: ContentBlockItem | None
+    versions: list[ContentVersionItem] = Field(default_factory=list)
+
+
+class ContentRollbackRequest(BaseModel):
+    version_id: str = Field(min_length=8, max_length=80)
+
+
+class PublishedContentResponse(BaseModel):
+    content: dict[str, str]
 
 
 app = FastAPI(
@@ -241,8 +263,12 @@ def content_blocks(
 ) -> ContentBlocksResponse:
     require_backend_token(x_fk_backend_token)
     blocks = [ContentBlockItem(**block.__dict__) for block in list_content_blocks()]
+    versions = [
+        ContentVersionItem(**version.__dict__)
+        for version in list_content_versions(limit=30)
+    ]
 
-    return ContentBlocksResponse(blocks=blocks)
+    return ContentBlocksResponse(blocks=blocks, versions=versions)
 
 
 @app.post("/admin/content", response_model=ContentBlockResponse)
@@ -262,7 +288,34 @@ def save_content_block(
     return ContentBlockResponse(
         stored=block is not None,
         block=ContentBlockItem(**block.__dict__) if block else None,
+        versions=[
+            ContentVersionItem(**version.__dict__)
+            for version in list_content_versions(limit=30)
+        ],
     )
+
+
+@app.post("/admin/content/rollback", response_model=ContentBlockResponse)
+def rollback_content_block(
+    payload: ContentRollbackRequest,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> ContentBlockResponse:
+    require_backend_token(x_fk_backend_token)
+    block = rollback_content_version(payload.version_id)
+
+    return ContentBlockResponse(
+        stored=block is not None,
+        block=ContentBlockItem(**block.__dict__) if block else None,
+        versions=[
+            ContentVersionItem(**version.__dict__)
+            for version in list_content_versions(limit=30)
+        ],
+    )
+
+
+@app.get("/content/published", response_model=PublishedContentResponse)
+def published_content() -> PublishedContentResponse:
+    return PublishedContentResponse(content=published_content_values())
 
 
 @app.get("/integrations", response_model=list[IntegrationStatus])

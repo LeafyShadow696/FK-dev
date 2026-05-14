@@ -54,6 +54,16 @@ class ContentBlock:
     published_at: str | None
 
 
+@dataclass(frozen=True)
+class ContentVersion:
+    id: str
+    block_key: str
+    value: str
+    action: str
+    actor: str
+    created_at: str
+
+
 _engine: Engine | None = None
 
 
@@ -140,6 +150,17 @@ def init_database(engine: Engine | None = None) -> bool:
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_content_blocks_area ON admin_content_blocks (area)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_content_versions (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              block_key text NOT NULL,
+              value text NOT NULL,
+              action text NOT NULL,
+              actor text NOT NULL DEFAULT 'admin',
+              created_at timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_content_versions_block_key ON admin_content_versions (block_key, created_at DESC)",
         ]
     else:
         statements = [
@@ -187,6 +208,17 @@ def init_database(engine: Engine | None = None) -> bool:
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_content_blocks_area ON admin_content_blocks (area)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_content_versions (
+              id text PRIMARY KEY,
+              block_key text NOT NULL,
+              value text NOT NULL,
+              action text NOT NULL,
+              actor text NOT NULL DEFAULT 'admin',
+              created_at text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_content_versions_block_key ON admin_content_versions (block_key, created_at DESC)",
         ]
 
     with engine.begin() as connection:
@@ -466,6 +498,7 @@ def upsert_content_block(
     area: str,
     draft_value: str,
     publish: bool = False,
+    version_action: str = "publish",
 ) -> ContentBlock | None:
     engine = get_engine()
 
@@ -549,17 +582,181 @@ def upsert_content_block(
         row = result.mappings().first() if result.returns_rows else None
 
     if row is None:
-        return get_content_block(normalized_key)
+        block = get_content_block(normalized_key)
+    else:
+        block = ContentBlock(
+            key=str(row["key"]),
+            label=str(row["label"]),
+            area=str(row["area"]),
+            draft_value=str(row["draft_value"]),
+            published_value=str(row["published_value"]),
+            updated_at=str(row["updated_at"]),
+            published_at=str(row["published_at"]) if row["published_at"] is not None else None,
+        )
 
-    return ContentBlock(
-        key=str(row["key"]),
-        label=str(row["label"]),
-        area=str(row["area"]),
-        draft_value=str(row["draft_value"]),
-        published_value=str(row["published_value"]),
-        updated_at=str(row["updated_at"]),
-        published_at=str(row["published_at"]) if row["published_at"] is not None else None,
+    if publish and block is not None:
+        record_content_version(
+            block_key=block.key,
+            value=block.published_value,
+            action=version_action,
+        )
+
+    return block
+
+
+def record_content_version(
+    *,
+    block_key: str,
+    value: str,
+    action: str,
+    actor: str = "admin",
+) -> str | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    version_id = str(uuid.uuid4())
+
+    if engine.dialect.name == "postgresql":
+        statement = text(
+            """
+            INSERT INTO admin_content_versions
+              (id, block_key, value, action, actor)
+            VALUES
+              (:id, :block_key, :value, :action, :actor)
+            """,
+        )
+        params: dict[str, Any] = {
+            "id": version_id,
+            "block_key": block_key,
+            "value": value,
+            "action": action,
+            "actor": actor,
+        }
+    else:
+        statement = text(
+            """
+            INSERT INTO admin_content_versions
+              (id, block_key, value, action, actor, created_at)
+            VALUES
+              (:id, :block_key, :value, :action, :actor, :created_at)
+            """,
+        )
+        params = {
+            "id": version_id,
+            "block_key": block_key,
+            "value": value,
+            "action": action,
+            "actor": actor,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+    with engine.begin() as connection:
+        connection.execute(statement, params)
+
+    return version_id
+
+
+def list_content_versions(
+    *,
+    key: str | None = None,
+    limit: int = 20,
+) -> list[ContentVersion]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+    safe_limit = max(1, min(limit, 50))
+
+    if key:
+        statement = text(
+            """
+            SELECT id, block_key, value, action, actor, created_at
+            FROM admin_content_versions
+            WHERE block_key = :key
+            ORDER BY created_at DESC
+            LIMIT :limit
+            """,
+        )
+        params: dict[str, Any] = {"key": key, "limit": safe_limit}
+    else:
+        statement = text(
+            """
+            SELECT id, block_key, value, action, actor, created_at
+            FROM admin_content_versions
+            ORDER BY created_at DESC
+            LIMIT :limit
+            """,
+        )
+        params = {"limit": safe_limit}
+
+    with engine.connect() as connection:
+        rows = connection.execute(statement, params).mappings()
+
+        return [
+            ContentVersion(
+                id=str(row["id"]),
+                block_key=str(row["block_key"]),
+                value=str(row["value"]),
+                action=str(row["action"]),
+                actor=str(row["actor"]),
+                created_at=str(row["created_at"]),
+            )
+            for row in rows
+        ]
+
+
+def rollback_content_version(version_id: str) -> ContentBlock | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    with engine.connect() as connection:
+        version = connection.execute(
+            text(
+                """
+                SELECT id, block_key, value
+                FROM admin_content_versions
+                WHERE id = :id
+                """,
+            ),
+            {"id": version_id},
+        ).mappings().first()
+
+    if version is None:
+        return None
+
+    existing = get_content_block(str(version["block_key"]))
+
+    if existing is None:
+        return None
+
+    rolled_back = upsert_content_block(
+        key=existing.key,
+        label=existing.label,
+        area=existing.area,
+        draft_value=str(version["value"]),
+        publish=True,
+        version_action="rollback",
     )
+
+    return rolled_back
+
+
+def published_content_values() -> dict[str, str]:
+    return {
+        block.key: block.published_value
+        for block in list_content_blocks()
+        if block.published_value
+    }
 
 
 def get_content_block(key: str) -> ContentBlock | None:

@@ -57,6 +57,15 @@ type ContentBlock = {
   publishedAt: string | null
 }
 
+type ContentVersion = {
+  id: string
+  blockKey: string
+  value: string
+  action: string
+  actor: string
+  createdAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -609,13 +618,16 @@ async function backendProviderSnapshots(): Promise<ProviderSnapshot[]> {
   }
 }
 
-async function backendContentBlocks(): Promise<ContentBlock[]> {
+async function backendContentState(): Promise<{
+  blocks: ContentBlock[]
+  versions: ContentVersion[]
+}> {
   const backendUrl =
     getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
   const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
 
   if (!backendToken) {
-    return []
+    return { blocks: [], versions: [] }
   }
 
   try {
@@ -630,10 +642,10 @@ async function backendContentBlocks(): Promise<ContentBlock[]> {
     )
 
     if (!response.ok || !Array.isArray(response.data?.blocks)) {
-      return []
+      return { blocks: [], versions: [] }
     }
 
-    return response.data.blocks.map((block: any) => ({
+    const blocks = response.data.blocks.map((block: any) => ({
       key: String(block.key ?? ""),
       label: String(block.label ?? ""),
       area: String(block.area ?? ""),
@@ -642,8 +654,20 @@ async function backendContentBlocks(): Promise<ContentBlock[]> {
       updatedAt: String(block.updated_at ?? ""),
       publishedAt: block.published_at ? String(block.published_at) : null,
     }))
+    const versions = Array.isArray(response.data?.versions)
+      ? response.data.versions.map((version: any) => ({
+          id: String(version.id ?? ""),
+          blockKey: String(version.block_key ?? ""),
+          value: String(version.value ?? ""),
+          action: String(version.action ?? ""),
+          actor: String(version.actor ?? ""),
+          createdAt: String(version.created_at ?? ""),
+        }))
+      : []
+
+    return { blocks, versions }
   } catch {
-    return []
+    return { blocks: [], versions: [] }
   }
 }
 
@@ -675,6 +699,28 @@ async function saveBackendContentBlock(input: {
       area: input.area,
       draft_value: input.draftValue,
       publish: input.publish,
+    }),
+  })
+}
+
+async function rollbackBackendContentBlock(versionId: string) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(`${backendUrl.replace(/\/$/, "")}/admin/content/rollback`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-FK-Backend-Token": backendToken,
+    },
+    body: JSON.stringify({
+      version_id: versionId,
     }),
   })
 }
@@ -988,6 +1034,45 @@ export default async function handler(req: any, res: any) {
     return
   }
 
+  if (action === "content-rollback") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const versionId =
+      typeof body.versionId === "string" ? body.versionId.trim() : ""
+
+    if (versionId.length < 8 || versionId.length > 80) {
+      sendJson(res, 400, { message: "Neplatná verze pro rollback." })
+      return
+    }
+
+    const rolledBack = await rollbackBackendContentBlock(versionId)
+
+    if (!rolledBack.ok) {
+      sendJson(res, rolledBack.status || 502, {
+        message: "Nepodařilo se obnovit publikovanou verzi.",
+      })
+      return
+    }
+
+    sendJson(res, 200, rolledBack.data)
+    return
+  }
+
   if (action === "overview") {
     if (!config.ready) {
       sendJson(res, 503, {
@@ -1002,11 +1087,11 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs, operations, contentBlocks] = await Promise.all([
+    const [providers, auditLogs, operations, contentState] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
       operationChecks(),
-      backendContentBlocks(),
+      backendContentState(),
     ])
     await writeProviderSnapshot(providers, operations)
     const providerSnapshots = await backendProviderSnapshots()
@@ -1024,7 +1109,8 @@ export default async function handler(req: any, res: any) {
       auditLogs,
       operations,
       providerSnapshots,
-      contentBlocks,
+      contentBlocks: contentState.blocks,
+      contentVersions: contentState.versions,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
