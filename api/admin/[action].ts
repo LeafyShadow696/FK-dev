@@ -369,10 +369,62 @@ async function vercelSummary(): Promise<ProviderSummary> {
   }
 }
 
-async function providerSummaries() {
-  const [github, vercel] = await Promise.all([githubSummary(), vercelSummary()])
+async function renderBackendSummary(): Promise<ProviderSummary> {
+  const checkedAt = new Date().toISOString()
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
 
-  return [vercel, github]
+  try {
+    const health = await fetchJson(`${backendUrl.replace(/\/$/, "")}/health`, {
+      headers: {
+        Accept: "application/json",
+      },
+    })
+
+    if (!health.ok) {
+      return {
+        id: "render-backend",
+        label: "Python backend",
+        ok: false,
+        headline: "Backend nevrátil platný health stav",
+        detail: `Health endpoint status ${health.status}.`,
+        href: backendUrl,
+        checkedAt,
+      }
+    }
+
+    return {
+      id: "render-backend",
+      label: "Python backend",
+      ok: health.data?.status === "ok",
+      headline: String(health.data?.service ?? "fkdev-admin-api"),
+      detail: `Render FastAPI · ${String(
+        health.data?.public_site_url ?? "https://fkdev.xyz",
+      )}`,
+      href: backendUrl,
+      checkedAt,
+    }
+  } catch {
+    return {
+      id: "render-backend",
+      label: "Python backend",
+      ok: false,
+      headline: "Backend je nedostupný",
+      detail: "Nepodařilo se načíst Render health endpoint v časovém limitu.",
+      href: backendUrl,
+      checkedAt,
+    }
+  }
+}
+
+async function providerSummaries() {
+  const [github, vercel, backend] = await Promise.all([
+    githubSummary(),
+    vercelSummary(),
+    renderBackendSummary(),
+  ])
+
+  return [vercel, github, backend]
 }
 
 function isAuthenticated(req: any, sessionSecret: string) {

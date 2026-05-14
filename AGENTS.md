@@ -71,6 +71,7 @@ npx.cmd --yes vercel@latest deploy --prod
 - `api/admin/[action].ts` - Vercel serverless admin API for login, session, logout, and overview.
 - `backend/` - Python FastAPI admin API scaffold intended for Render or another backend runtime.
 - `docs/admin-portal-architecture.md` - backend, database, storage, and secret-handling plan.
+- `render.yaml` - Render Blueprint for the Python admin API and Render Postgres.
 - `src/components/layout/` - header, footer, map, theme toggle.
 - `src/components/sections/` - landing page and content sections.
 - `src/components/privacy/ConsentProvider.tsx` - cookie/consent state.
@@ -211,6 +212,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - integration status placeholders for Vercel, GitHub, Render, Railway, database, and cloud storage
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - recommended Python/FastAPI backend architecture summary
+- Python/FastAPI backend is configured for Render through `render.yaml`
 
 Required server-side env vars before production admin login can work:
 
@@ -229,6 +231,7 @@ Future provider integration env vars:
 - `RAILWAY_API_KEY`
 - `DATABASE_URL`
 - `FK_STORAGE_CONNECTION`
+- `RENDER_BACKEND_URL` - currently `https://fkdev-admin-api.onrender.com`
 - `OPENAI_API_KEY`
 - `GEMINI_API_KEY`
 - `TAILNET_UNIQUE_ID`
@@ -239,7 +242,7 @@ Future provider integration env vars:
 
 Keep this route private. Do not expose dashboard data without a verified server-side session. Do not add provider tokens to frontend code. Do not add `/portal` to the public sitemap.
 
-The recommended backend direction is Python / FastAPI on Render, PostgreSQL for persistent data and audit logs, and object storage for non-secret uploaded files. Treat env files as secret inputs only; do not commit or serve them.
+The Python / FastAPI backend is deployed on Render as `fkdev-admin-api` at `https://fkdev-admin-api.onrender.com`. Render Postgres is `fkdev-admin-db`. PostgreSQL is intended for persistent data and audit logs, and object storage for non-secret uploaded files. Treat env files as secret inputs only; do not commit or serve them.
 
 Do not commit secrets, API keys, tokens, private credentials, or personal session artifacts.
 
