@@ -161,6 +161,10 @@ async function readJson<T>(response: Response) {
   }
 }
 
+function isJsonResponse(response: Response) {
+  return response.headers.get("content-type")?.includes("application/json")
+}
+
 function IntegrationCard({
   id,
   label,
@@ -250,6 +254,11 @@ function PortalLogin({
     const response = await fetch("/api/admin/overview", {
       credentials: "include",
     })
+
+    if (!isJsonResponse(response)) {
+      throw new Error("Admin API nevrátilo JSON odpověď.")
+    }
+
     const data = await readJson<PortalOverview>(response)
 
     if (!response.ok) {
@@ -271,6 +280,11 @@ function PortalLogin({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessKey }),
       })
+
+      if (!isJsonResponse(response)) {
+        throw new Error("Admin API nevrátilo JSON odpověď.")
+      }
+
       const data = await readJson<{ message?: string }>(response)
 
       if (!response.ok) {
@@ -1379,6 +1393,11 @@ export default function PortalPage() {
     const response = await fetch("/api/admin/overview", {
       credentials: "include",
     })
+
+    if (!isJsonResponse(response)) {
+      throw new Error("Admin API nevrátilo JSON odpověď.")
+    }
+
     const data = await readJson<PortalOverview>(response)
 
     if (!response.ok) {
@@ -1397,6 +1416,11 @@ export default function PortalPage() {
         const response = await fetch("/api/admin/session", {
           credentials: "include",
         })
+
+        if (!isJsonResponse(response)) {
+          throw new Error("Admin API nevrátilo JSON odpověď.")
+        }
+
         const data = await readJson<{
           authenticated?: boolean
           ready?: boolean
@@ -1424,7 +1448,15 @@ export default function PortalPage() {
         setState("ready")
       } catch {
         if (active) {
-          setMessage("Admin API teď není dostupné.")
+          const isLocalStaticPreview =
+            window.location.hostname === "127.0.0.1" ||
+            window.location.hostname === "localhost"
+
+          setMessage(
+            isLocalStaticPreview
+              ? "Lokální Vite preview nespouští serverless API. Portál ověřuj přes Vercel produkci nebo Vercel preview."
+              : "Admin API teď není dostupné.",
+          )
           setState("configured")
         }
       }

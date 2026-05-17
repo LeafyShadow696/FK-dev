@@ -4,6 +4,12 @@ type PublishedContent = Record<string, string>
 
 let contentCache: PublishedContent | null = null
 
+function shouldLoadPublishedContent() {
+  const host = window.location.hostname
+
+  return host !== "127.0.0.1" && host !== "localhost"
+}
+
 export function usePublishedContent() {
   const [content, setContent] = useState<PublishedContent>(
     () => contentCache ?? {},
@@ -13,6 +19,10 @@ export function usePublishedContent() {
     let active = true
 
     async function loadContent() {
+      if (!shouldLoadPublishedContent()) {
+        return
+      }
+
       try {
         const response = await fetch("/api/content", {
           headers: {

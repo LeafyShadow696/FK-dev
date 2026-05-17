@@ -431,7 +431,7 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
   const normalizedBackendUrl = backendUrl.replace(/\/$/, "")
 
   try {
-    const [health, adminStatus] = await Promise.all([
+    const [healthResult, adminStatusResult] = await Promise.allSettled([
       fetchJson(`${normalizedBackendUrl}/health`, {
         headers: {
           Accept: "application/json",
@@ -443,6 +443,24 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
         },
       }),
     ])
+
+    if (healthResult.status === "rejected") {
+      return {
+        id: "render-backend",
+        label: "Python backend",
+        ok: false,
+        headline: "Backend je nedostupný",
+        detail: "Nepodařilo se načíst Render health endpoint v časovém limitu.",
+        href: backendUrl,
+        checkedAt,
+      }
+    }
+
+    const health = healthResult.value
+    const adminStatus =
+      adminStatusResult.status === "fulfilled"
+        ? adminStatusResult.value
+        : { ok: false, status: 0, data: null }
     const database = adminStatus.data?.database
     const databaseDetail = adminStatus.ok
       ? `Databáze: ${
@@ -469,7 +487,7 @@ async function renderBackendSummary(): Promise<ProviderSummary> {
     return {
       id: "render-backend",
       label: "Python backend",
-      ok: health.data?.status === "ok" && (adminStatus.ok || adminStatus.status === 404),
+      ok: health.data?.status === "ok",
       headline: String(health.data?.service ?? "fkdev-admin-api"),
       detail: `Render FastAPI · ${String(
         health.data?.public_site_url ?? "https://fkdev.xyz",
