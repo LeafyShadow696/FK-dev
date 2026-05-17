@@ -24,9 +24,7 @@ import { Button } from "@/components/ui/Button"
 import {
   backendRecommendation,
   portalIntegrations,
-  portalPrinciples,
 } from "@/data/adminPortal"
-import { business } from "@/data/business"
 
 type SessionState = "checking" | "configured" | "ready" | "authenticated"
 
@@ -218,24 +216,17 @@ function PortalSkeleton() {
 
 function PortalUnavailable({ message }: { message: string }) {
   return (
-    <main className="px-4 py-16 sm:px-6 lg:px-8">
-      <section className="mx-auto max-w-3xl rounded-[var(--radius)] border border-border/70 bg-card/50 p-6 sm:p-8">
-        <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background/40">
+    <main className="flex min-h-[70dvh] items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+      <section className="w-full max-w-sm rounded-[var(--radius)] border border-border/70 bg-card/55 p-5 shadow-[0_24px_80px_-48px_hsl(var(--brand-violet)/0.5)] sm:p-6">
+        <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background/40">
           <LockKeyhole className="h-5 w-5 text-foreground/90" aria-hidden />
         </span>
-        <h1 className="mt-6 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Admin portál čeká na bezpečné nastavení
+        <h1 className="mt-5 text-center font-display text-2xl font-semibold tracking-tight text-foreground">
+          Admin portál
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+        <p className="mt-3 text-center text-sm leading-relaxed text-muted-foreground">
           {message}
         </p>
-        <div className="mt-6 rounded-[var(--radius)] border border-border/70 bg-background/35 p-4 text-sm leading-relaxed text-muted-foreground">
-          Pro aktivaci nastav v produkčním prostředí proměnné{" "}
-          <code className="text-foreground">FK_ADMIN_ACCESS_KEY</code> a{" "}
-          <code className="text-foreground">FK_ADMIN_SESSION_SECRET</code>.
-          Přístupový klíč musí mít minimálně 16 znaků, session secret minimálně
-          32 znaků.
-        </div>
       </section>
     </main>
   )
@@ -301,61 +292,19 @@ function PortalLogin({
   }
 
   return (
-    <main className="px-4 py-12 sm:px-6 lg:px-8">
-      <section className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-        <div className="pt-4">
-          <p className="text-sm font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            Soukromý portál
-          </p>
-          <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Admin centrum pro{" "}
-            <span className="brand-script signature-gradient">
-              {business.legalName}
-            </span>
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Bezpečný základ pro správu projektu, kontrolu integrací a budoucí
-            provozní dashboard. Citlivé tokeny zůstávají jen na serveru.
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {portalPrinciples.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <article
-                  key={item.title}
-                  className="rounded-[var(--radius)] border border-border/70 bg-card/40 p-4"
-                >
-                  <Icon className="h-5 w-5 text-foreground/90" aria-hidden />
-                  <h2 className="mt-4 text-sm font-semibold text-foreground">
-                    {item.title}
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {item.text}
-                  </p>
-                </article>
-              )
-            })}
-          </div>
-        </div>
-
+    <main className="flex min-h-[70dvh] items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+      <section className="w-full max-w-sm">
         <form
           onSubmit={onSubmit}
           className="rounded-[var(--radius)] border border-border/70 bg-card/55 p-5 shadow-[0_24px_80px_-48px_hsl(var(--brand-violet)/0.5)] sm:p-6"
         >
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background/40">
+          <div className="text-center">
+            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-background/40">
               <KeyRound className="h-5 w-5 text-foreground/90" aria-hidden />
             </span>
-            <div>
-              <h2 className="font-display text-xl font-semibold text-foreground">
-                Přihlášení správce
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Přístup je ověřený přes serverless API a HttpOnly cookie.
-              </p>
-            </div>
+            <h1 className="mt-5 font-display text-2xl font-semibold tracking-tight text-foreground">
+              Admin portál
+            </h1>
           </div>
 
           <label className="mt-6 block text-sm font-medium text-foreground">
@@ -1448,15 +1397,7 @@ export default function PortalPage() {
         setState("ready")
       } catch {
         if (active) {
-          const isLocalStaticPreview =
-            window.location.hostname === "127.0.0.1" ||
-            window.location.hostname === "localhost"
-
-          setMessage(
-            isLocalStaticPreview
-              ? "Lokální Vite preview nespouští serverless API. Portál ověřuj přes Vercel produkci nebo Vercel preview."
-              : "Admin API teď není dostupné.",
-          )
+          setMessage("Portál teď není dostupný.")
           setState("configured")
         }
       }
