@@ -267,9 +267,9 @@ function formatDateTime(value: string | number | undefined) {
   })
 }
 
-async function fetchJson(url: string, init: RequestInit) {
+async function fetchJson(url: string, init: RequestInit, timeoutMs = 15000) {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 8000)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const response = await fetch(url, {
