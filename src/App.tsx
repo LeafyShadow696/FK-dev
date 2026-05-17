@@ -1,4 +1,4 @@
-import { Route, Switch } from "wouter"
+import { Route, Switch, useLocation } from "wouter"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { Header } from "@/components/layout/Header"
@@ -71,6 +71,19 @@ function AppContent() {
 }
 
 export default function App() {
+  const [location] = useLocation()
+
+  if (location === "/portal") {
+    return (
+      <>
+        <ScrollToTop />
+        <div id="main">
+          <PortalPage />
+        </div>
+      </>
+    )
+  }
+
   return (
     <ConsentProvider>
       <AppContent />
