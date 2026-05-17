@@ -50,6 +50,7 @@ Admin and backend:
 - `backend/app/database.py` initializes PostgreSQL tables and reports database status.
 - `/admin/status` is a read-only backend status endpoint.
 - `/admin/audit` is a protected backend read/write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
+- `/admin/export` is a protected JSON backup endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
 - The Vercel admin API includes recent audit events in `/api/admin/overview`
   only for authenticated admin sessions.
 - `/api/admin/overview` also includes read-only `operations` for Vercel domains
@@ -93,6 +94,7 @@ Start with:
 - `tests/e2e/smoke.spec.ts`
 - `render.yaml`
 - `vercel.json`
+- `docs/admin-data-backups.md`
 
 ## Local Setup
 
@@ -283,6 +285,10 @@ cd backend
 
 For routing, UI, SEO, cookie, asset, contact, or portal changes, also run
 Playwright e2e against local preview or production as appropriate.
+
+Before the Render Postgres free database expiry on `2026-06-13T11:47:53Z`,
+verify the `Admin data export` GitHub Actions workflow has produced a recent
+artifact. The workflow requires the repository secret `FK_BACKEND_ADMIN_TOKEN`.
 
 Scan for accidental secrets before push with a local scanner or with a focused
 `rg` pattern that looks for real assigned values. If the scan finds a real

@@ -24,6 +24,7 @@ Current backend endpoints:
 - `GET /content/published` - public read-only published content values for safe frontend hydration.
 - `GET /admin/provider-snapshots` - protected provider snapshot history read.
 - `POST /admin/provider-snapshots` - protected provider snapshot write.
+- `GET /admin/export` - protected JSON export of admin database tables for backups.
 
 Content publishing is guarded by the same quality check used by
 `/admin/content/check`. It blocks unsupported guarantee-style claims and invalid
@@ -46,3 +47,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 Do not commit `.env` files or provider tokens. Use platform environment variables.
+
+Backup note: Render Postgres is currently on a free plan. See
+`docs/admin-data-backups.md` for the scheduled export workflow and the current
+database expiry date.

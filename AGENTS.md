@@ -111,6 +111,7 @@ python -m venv .venv
 - `backend/` - Python FastAPI admin API intended for Render.
 - `backend/app/database.py` - SQLAlchemy database initialization, status checks, and audit-log writes.
 - `docs/admin-portal-architecture.md` - backend, database, storage, and secret-handling plan.
+- `docs/admin-data-backups.md` - Render Postgres export workflow and expiry notes.
 - `docs/ai-agent-handoff.md` - full AI-agent handoff and disaster-recovery guide.
 - `render.yaml` - Render Blueprint for the Python admin API and Render Postgres.
 - `src/components/layout/` - header, footer, map, theme toggle.
@@ -226,6 +227,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - PostgreSQL-backed content version history and rollback for published snapshots
 - protected content quality checks before publishing selected copy
 - audit events for content draft saves, publishes, blocked publishes, and rollbacks
+- protected admin data export through the FastAPI `/admin/export` endpoint
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`
@@ -299,6 +301,11 @@ proxies the public FastAPI `/content/published` endpoint. Every public component
 using this content must keep a checked-in fallback string so the landing page
 does not depend on backend availability for first render or basic operation.
 
+The protected FastAPI `/admin/export` endpoint returns a JSON export of admin
+database tables for backup purposes. The scheduled GitHub Actions workflow
+`Admin data export` calls it daily and stores a 90-day artifact. It requires the
+repository secret `FK_BACKEND_ADMIN_TOKEN`.
+
 ## Provider and Deployment Snapshot
 
 Current production assumptions:
@@ -311,6 +318,7 @@ Current production assumptions:
 - Render backend service: `fkdev-admin-api`
 - Render backend URL: `https://fkdev-admin-api.onrender.com`
 - Render Postgres: `fkdev-admin-db`
+- Render Postgres free-plan expiry: `2026-06-13T11:47:53Z`
 - Backend database status endpoint: `https://fkdev-admin-api.onrender.com/admin/status`
 
 Provider state can drift. Verify live state before making domain, deployment,

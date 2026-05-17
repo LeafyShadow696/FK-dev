@@ -491,6 +491,65 @@ def list_provider_snapshots(limit: int = 10) -> list[ProviderSnapshot]:
     return snapshots
 
 
+def _json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+
+    return value
+
+
+def _export_rows(table: str, order_by: str | None = None) -> list[dict[str, Any]]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+
+    statement = f"SELECT * FROM {table}"
+
+    if order_by:
+        statement = f"{statement} ORDER BY {order_by}"
+
+    with engine.connect() as connection:
+        rows = connection.execute(text(statement)).mappings()
+
+        return [
+            {key: _json_value(value) for key, value in row.items()}
+            for row in rows
+        ]
+
+
+def export_admin_data() -> dict[str, Any]:
+    status = database_status()
+
+    return {
+        "database": status.__dict__,
+        "tables": {
+            "admin_audit_logs": _export_rows(
+                "admin_audit_logs",
+                "created_at DESC",
+            ),
+            "admin_provider_snapshots": _export_rows(
+                "admin_provider_snapshots",
+                "created_at DESC",
+            ),
+            "admin_content_blocks": _export_rows(
+                "admin_content_blocks",
+                "updated_at DESC",
+            ),
+            "admin_content_versions": _export_rows(
+                "admin_content_versions",
+                "created_at DESC",
+            ),
+            "admin_settings": _export_rows("admin_settings", "updated_at DESC"),
+        },
+    }
+
+
 def upsert_content_block(
     *,
     key: str,

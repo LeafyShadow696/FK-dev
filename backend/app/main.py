@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
@@ -6,6 +7,7 @@ from pydantic import BaseModel, Field
 from .content_quality import check_content_quality
 from .database import (
     database_status,
+    export_admin_data,
     list_content_versions,
     list_content_blocks,
     list_audit_events,
@@ -158,6 +160,13 @@ class PublishedContentResponse(BaseModel):
     content: dict[str, str]
 
 
+class AdminExportResponse(BaseModel):
+    generated_at: str
+    service: str
+    public_site_url: str
+    export: dict[str, Any]
+
+
 app = FastAPI(
     title="fkdev.xyz Admin API",
     version="0.1.0",
@@ -298,6 +307,21 @@ def content_blocks(
     ]
 
     return ContentBlocksResponse(blocks=blocks, versions=versions)
+
+
+@app.get("/admin/export", response_model=AdminExportResponse)
+def admin_export(
+    x_fk_backend_token: str | None = Header(default=None),
+) -> AdminExportResponse:
+    require_backend_token(x_fk_backend_token)
+    settings = get_settings()
+
+    return AdminExportResponse(
+        generated_at=datetime.now(UTC).isoformat(),
+        service=settings.app_name,
+        public_site_url=settings.public_site_url,
+        export=export_admin_data(),
+    )
 
 
 @app.post("/admin/content", response_model=ContentBlockResponse)
