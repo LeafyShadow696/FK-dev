@@ -52,7 +52,7 @@ Admin and backend:
 - `/admin/audit` is a protected backend read/write endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
 - `/admin/export` is a protected JSON backup endpoint and requires `FK_BACKEND_ADMIN_TOKEN`.
 - `/admin/telemetry` and `/admin/telemetry/summary` store and expose anonymous consent-based live traffic aggregates for `/portal`.
-- `/admin/opportunities` and `/admin/opportunities/refresh` maintain the Opportunity Radar for grants, tenders, and market-demand watch sources.
+- `/admin/opportunities` and `/admin/opportunities/refresh` maintain the Opportunity Radar for grants, tenders, market-demand watch sources, and guarded MPSV live-import signals.
 - The Vercel admin API includes recent audit events in `/api/admin/overview`
   only for authenticated admin sessions.
 - `/api/admin/overview` also includes read-only `operations` for Vercel domains

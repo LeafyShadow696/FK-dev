@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -738,6 +742,256 @@ SEED_OPPORTUNITIES: list[dict[str, Any]] = [
     },
 ]
 
+OPPORTUNITY_IMPORT_LIMIT = 8
+OPPORTUNITY_FETCH_TIMEOUT_SECONDS = 12
+OPPORTUNITY_RESPONSE_LIMIT_BYTES = 8_000_000
+MPSV_FULL_DATASET_URL = "https://data.mpsv.cz/od/soubory/volna-mista/volna-mista.json"
+
+MPSV_IT_KEYWORDS = [
+    "automatizace",
+    "data",
+    "datab",
+    "digital",
+    "hosting",
+    "it ",
+    "program",
+    "python",
+    "software",
+    "spravce site",
+    "správce sítě",
+    "technik it",
+    "web",
+]
+MPSV_REGION_KEYWORDS = [
+    "bystrice",
+    "bystřice",
+    "dankovice",
+    "daňkovice",
+    "havlickuv brod",
+    "havlíčkův brod",
+    "jihlava",
+    "nove mesto",
+    "nové město",
+    "pelhrimov",
+    "pelhřimov",
+    "trebic",
+    "třebíč",
+    "vysocina",
+    "vysočina",
+    "zdar nad sazavou",
+    "žďár nad sázavou",
+]
+
+
+def _stable_source_id(prefix: str, *parts: object) -> str:
+    digest = hashlib.sha256("|".join(str(part) for part in parts).encode("utf-8")).hexdigest()
+    return f"{prefix}-{digest[:16]}"
+
+
+def _normalize_search_text(value: object) -> str:
+    replacements = str.maketrans(
+        {
+            "á": "a",
+            "č": "c",
+            "ď": "d",
+            "é": "e",
+            "ě": "e",
+            "í": "i",
+            "ň": "n",
+            "ó": "o",
+            "ř": "r",
+            "š": "s",
+            "ť": "t",
+            "ú": "u",
+            "ů": "u",
+            "ý": "y",
+            "ž": "z",
+        },
+    )
+    return str(value).lower().translate(replacements)
+
+
+def _nested_text(value: object) -> str:
+    if isinstance(value, dict):
+        return " ".join(_nested_text(item) for item in value.values())
+    if isinstance(value, list):
+        return " ".join(_nested_text(item) for item in value)
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _field(payload: dict[str, Any], names: list[str]) -> str:
+    normalized_names = {_normalize_search_text(name) for name in names}
+    for key, value in payload.items():
+        if _normalize_search_text(key) in normalized_names and value not in (None, ""):
+            return str(value)
+    return ""
+
+
+def _read_url_json(
+    url: str,
+    *,
+    max_bytes: int = OPPORTUNITY_RESPONSE_LIMIT_BYTES,
+    timeout: int = OPPORTUNITY_FETCH_TIMEOUT_SECONDS,
+) -> object:
+    request = Request(url, headers={"User-Agent": "fkdev-opportunity-radar/1.0"})
+    with urlopen(request, timeout=timeout) as response:
+        raw = response.read(max_bytes + 1)
+
+    if len(raw) > max_bytes:
+        raise ValueError(f"Opportunity source response exceeded {max_bytes} bytes")
+
+    text_value = raw.decode("utf-8-sig")
+    stripped = text_value.lstrip()
+    if not stripped.startswith(("[", "{")) or "Chyba 404" in stripped[:1000]:
+        raise ValueError("Opportunity source did not return JSON payload")
+
+    return json.loads(text_value)
+
+
+def _mpsv_candidate_urls(now: datetime) -> list[str]:
+    urls: list[str] = []
+    for day_offset in range(4):
+        day = (now - timedelta(days=day_offset)).date().isoformat()
+        urls.append(
+            f"https://data.mpsv.cz/od/soubory/prirustky-volnych-mist/prirustky-volnych-mist-{day}.json",
+        )
+
+    if os.getenv("FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT", "").lower() in {"1", "true", "yes"}:
+        urls.append(MPSV_FULL_DATASET_URL)
+
+    return urls
+
+
+def _payload_items(payload: object) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+
+    if not isinstance(payload, dict):
+        return []
+
+    for key in ("data", "items", "volnaMista", "volna_mista", "polozky", "results"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+
+    return []
+
+
+def _mpsv_opportunities_from_payload(
+    payload: object,
+    *,
+    source_url: str,
+    imported_at: str,
+) -> list[dict[str, Any]]:
+    opportunities: list[dict[str, Any]] = []
+
+    for item in _payload_items(payload):
+        search_text = _normalize_search_text(_nested_text(item))
+        matched_it = [keyword for keyword in MPSV_IT_KEYWORDS if _normalize_search_text(keyword) in search_text]
+        matched_region = [
+            keyword for keyword in MPSV_REGION_KEYWORDS if _normalize_search_text(keyword) in search_text
+        ]
+
+        if not matched_it and not matched_region:
+            continue
+
+        title = _field(item, ["profese", "nazev", "název", "pracovniPozice", "pracovni_misto", "pozice", "obor"])
+        employer = _field(item, ["zamestnavatel", "zaměstnavatel", "firma", "nazevZamestnavatele"])
+        location = _field(item, ["obec", "mistoVykonu", "místoVýkonu", "misto_vykonu", "lokalita", "okres", "kraj"])
+        deadline = _field(item, ["platnostDo", "platnost_do", "datumExpirace", "datumZmeny"])
+        item_url = _field(item, ["url", "odkaz"]) or "https://data.mpsv.cz/web/data/zamestnanost"
+
+        display_title = title or employer or "MPSV signál poptávky po digitálních kompetencích"
+        summary_parts = [
+            "Otevřená data MPSV zachytila položku odpovídající IT, webu, datům nebo regionu.",
+        ]
+        if employer:
+            summary_parts.append(f"Subjekt: {employer}.")
+        if location:
+            summary_parts.append(f"Lokalita: {location}.")
+
+        score = 58
+        reasons = ["Importovaný signál z otevřených dat MPSV."]
+        if matched_it:
+            score += 18
+            reasons.append("Text odpovídá IT, webu, datům, automatizaci nebo softwaru.")
+        if matched_region:
+            score += 10
+            reasons.append("Text odpovídá Vysočině nebo blízkému regionu.")
+
+        opportunities.append(
+            {
+                "source_id": _stable_source_id("mpsv", title, employer, location, deadline, item_url),
+                "category": "market_signal",
+                "title": display_title[:180],
+                "summary": " ".join(summary_parts),
+                "url": item_url,
+                "region": location or "ČR / neupřesněno",
+                "status": "imported",
+                "deadline": deadline or None,
+                "keywords": sorted(set(matched_it + matched_region)),
+                "score": min(score, 100),
+                "match_reasons": reasons,
+                "next_action": "Ověřit firmu/lokalitu a zvážit oslovení s nabídkou webu, automatizace nebo IT podpory.",
+                "metadata": {
+                    "source_type": "mpsv_import",
+                    "raw_source": source_url,
+                    "imported_at": imported_at,
+                },
+            },
+        )
+
+        if len(opportunities) >= OPPORTUNITY_IMPORT_LIMIT:
+            break
+
+    return opportunities
+
+
+def import_live_opportunities(now: datetime) -> list[dict[str, Any]]:
+    imported_at = now.isoformat()
+    imported: list[dict[str, Any]] = []
+    failures: list[dict[str, str]] = []
+
+    for url in _mpsv_candidate_urls(now):
+        try:
+            payload = _read_url_json(url)
+        except (OSError, URLError, TimeoutError, ValueError, json.JSONDecodeError, UnicodeDecodeError) as error:
+            failures.append({"url": url, "error": str(error)[:220]})
+            continue
+
+        imported.extend(_mpsv_opportunities_from_payload(payload, source_url=url, imported_at=imported_at))
+        if imported:
+            break
+
+    if imported:
+        return imported[:OPPORTUNITY_IMPORT_LIMIT]
+
+    return [
+        {
+            "source_id": "mpsv-live-import-status",
+            "category": "market_signal",
+            "title": "MPSV import: čeká na dostupný denní JSON zdroj",
+            "summary": "Radar má připravený importní adaptér, ale poslední kontrolované přírůstkové zdroje nevrátily použitelný JSON. Plný dataset MPSV je kvůli velikosti na hostingu vypnutý, dokud se nezapne FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT.",
+            "url": "https://data.mpsv.cz/web/data/zamestnanost",
+            "region": "Vysočina + ČR trend",
+            "status": "watching",
+            "deadline": None,
+            "keywords": ["MPSV", "import", "volná místa", "IT", "digitalizace"],
+            "score": 55,
+            "match_reasons": [
+                "Importní adaptér je připravený, ale chrání backend před stahováním velkého datasetu bez výslovného přepínače.",
+            ],
+            "next_action": "Zapnout FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT jen při dostatečném runtime limitu, nebo doplnit menší veřejný endpoint s přírůstky.",
+            "metadata": {
+                "source_type": "mpsv_import_status",
+                "attempted_sources": failures,
+                "imported_at": imported_at,
+            },
+        },
+    ]
+
 
 def _score_opportunity(seed: dict[str, Any]) -> tuple[int, list[str]]:
     keywords = [str(keyword).lower() for keyword in seed.get("keywords", [])]
@@ -776,16 +1030,22 @@ def refresh_opportunities() -> list[Opportunity]:
     init_database(engine)
 
     refreshed: list[Opportunity] = []
-    now = datetime.now(UTC).isoformat()
+    refresh_started_at = datetime.now(UTC)
+    now = refresh_started_at.isoformat()
 
     with engine.begin() as connection:
-        for seed in SEED_OPPORTUNITIES:
-            score, reasons = _score_opportunity(seed)
+        for seed in [*SEED_OPPORTUNITIES, *import_live_opportunities(refresh_started_at)]:
+            score, reasons = (
+                (int(seed["score"]), list(seed["match_reasons"]))
+                if "score" in seed and "match_reasons" in seed
+                else _score_opportunity(seed)
+            )
             opportunity_id = str(uuid.uuid4())
             metadata = {
                 "profile": OPPORTUNITY_PROFILE,
                 "keywords": seed.get("keywords", []),
-                "source_type": "curated_watch",
+                "source_type": seed.get("source_type", "curated_watch"),
+                **seed.get("metadata", {}),
             }
 
             if engine.dialect.name == "postgresql":

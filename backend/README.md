@@ -28,7 +28,7 @@ Current backend endpoints:
 - `POST /admin/telemetry` - protected write endpoint for anonymous consent-based site telemetry.
 - `GET /admin/telemetry/summary` - protected aggregate telemetry summary for `/portal`.
 - `GET /admin/opportunities` - protected ranked watchlist of grants, tenders, and market-demand channels.
-- `POST /admin/opportunities/refresh` - protected refresh of the opportunity radar seed/watch sources.
+- `POST /admin/opportunities/refresh` - protected refresh of the opportunity radar seed/watch sources and guarded live imports.
 
 Content publishing is guarded by the same quality check used by
 `/admin/content/check`. It blocks unsupported guarantee-style claims and invalid
@@ -55,3 +55,8 @@ Do not commit `.env` files or provider tokens. Use platform environment variable
 Backup note: Render Postgres is currently on a free plan. See
 `docs/admin-data-backups.md` for the scheduled export workflow and the current
 database expiry date.
+
+Opportunity radar note: MPSV live import first tries small daily increment JSON
+sources. The large full dataset is intentionally disabled by default for Render
+runtime safety; enable `FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT=true` only when
+the service has enough time and memory budget.
