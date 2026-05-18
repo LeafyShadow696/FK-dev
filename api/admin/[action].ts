@@ -107,6 +107,11 @@ type OpportunityItem = {
   matchReasons: string[]
   nextAction: string
   metadata: Record<string, unknown>
+  workflowStatus: string
+  adminNotes: string
+  checklist: Array<{ id: string; label: string; done: boolean }>
+  nextReviewAt: string | null
+  decisionUpdatedAt: string | null
   firstSeenAt: string
   lastSeenAt: string
 }
@@ -814,6 +819,21 @@ function mapOpportunity(item: any): OpportunityItem {
       item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
         ? item.metadata
         : {},
+    workflowStatus: String(item.workflow_status ?? "new"),
+    adminNotes: String(item.admin_notes ?? ""),
+    checklist: Array.isArray(item.checklist)
+      ? item.checklist
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? ""),
+            done: Boolean(entry.done),
+          }))
+      : [],
+    nextReviewAt: item.next_review_at ? String(item.next_review_at) : null,
+    decisionUpdatedAt: item.decision_updated_at
+      ? String(item.decision_updated_at)
+      : null,
     firstSeenAt: String(item.first_seen_at ?? ""),
     lastSeenAt: String(item.last_seen_at ?? ""),
   }
@@ -866,6 +886,40 @@ async function refreshBackendOpportunities() {
       "X-FK-Backend-Token": backendToken,
     },
   })
+}
+
+async function saveBackendOpportunityWorkflow(input: {
+  opportunityId: string
+  workflowStatus: string
+  adminNotes: string
+  checklist: Array<{ id: string; label: string; done: boolean }>
+  nextReviewAt: string | null
+}) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(
+    `${backendUrl.replace(/\/$/, "")}/admin/opportunities/${encodeURIComponent(input.opportunityId)}/workflow`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-FK-Backend-Token": backendToken,
+      },
+      body: JSON.stringify({
+        workflow_status: input.workflowStatus,
+        admin_notes: input.adminNotes,
+        checklist: input.checklist,
+        next_review_at: input.nextReviewAt,
+      }),
+    },
+  )
 }
 
 async function saveBackendContentBlock(input: {
@@ -1288,6 +1342,72 @@ export default async function handler(req: any, res: any) {
       opportunities: Array.isArray(refreshed.data?.opportunities)
         ? refreshed.data.opportunities.map(mapOpportunity)
         : [],
+    })
+    return
+  }
+
+  if (action === "opportunity-workflow") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const opportunityId =
+      typeof body.opportunityId === "string" ? body.opportunityId.trim() : ""
+    const workflowStatus =
+      typeof body.workflowStatus === "string" ? body.workflowStatus.trim() : "verify"
+    const adminNotes =
+      typeof body.adminNotes === "string" ? body.adminNotes.trim() : ""
+    const nextReviewAt =
+      typeof body.nextReviewAt === "string" && body.nextReviewAt.trim()
+        ? body.nextReviewAt.trim()
+        : null
+    const checklist = Array.isArray(body.checklist)
+      ? body.checklist
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? "").trim(),
+            done: Boolean(entry.done),
+          }))
+          .filter((entry) => entry.label.length > 0)
+      : []
+
+    if (opportunityId.length < 8 || adminNotes.length > 4000) {
+      sendJson(res, 400, { message: "Neplatná příležitost nebo poznámka." })
+      return
+    }
+
+    const saved = await saveBackendOpportunityWorkflow({
+      opportunityId,
+      workflowStatus,
+      adminNotes,
+      checklist,
+      nextReviewAt,
+    })
+
+    if (!saved.ok || !saved.data?.opportunity) {
+      sendJson(res, saved.status || 502, {
+        message: "Nepodařilo se uložit stav příležitosti.",
+      })
+      return
+    }
+
+    sendJson(res, 200, {
+      stored: true,
+      opportunity: mapOpportunity(saved.data.opportunity),
     })
     return
   }

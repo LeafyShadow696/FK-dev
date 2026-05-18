@@ -29,6 +29,7 @@ Current backend endpoints:
 - `GET /admin/telemetry/summary` - protected aggregate telemetry summary for `/portal`.
 - `GET /admin/opportunities` - protected ranked watchlist of grants, tenders, and market-demand channels.
 - `POST /admin/opportunities/refresh` - protected refresh of the opportunity radar seed/watch sources and guarded live imports.
+- `POST /admin/opportunities/{id}/workflow` - protected save of private workflow status, notes, checklist, and next review date for one opportunity.
 
 Content publishing is guarded by the same quality check used by
 `/admin/content/check`. It blocks unsupported guarantee-style claims and invalid
@@ -57,8 +58,8 @@ Backup note: Render Postgres is currently on a free plan. See
 database expiry date.
 
 Opportunity radar note: live import checks guarded MPSV sources, parses the
-official API / OP TAK call overview for matching open grant calls, and keeps a
-NEN public-procurement status item until a stable CPV/NIPEZ query is wired in.
+official API / OP TAK call overview for matching open grant calls, and parses
+the public NEN list snapshot conservatively for IT/web procurement matches.
 The large MPSV full dataset is intentionally disabled by default for Render
 runtime safety; enable `FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT=true` only when
 the service has enough time and memory budget.

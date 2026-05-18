@@ -10,14 +10,17 @@ import {
   Globe2,
   History,
   KeyRound,
+  ListChecks,
   Loader2,
   LockKeyhole,
   LogOut,
+  Plus,
   ScrollText,
   Server,
   ShieldCheck,
   RotateCcw,
   Save,
+  Trash2,
   Wifi,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -113,8 +116,19 @@ type OpportunityItem = {
   matchReasons: string[]
   nextAction: string
   metadata: Record<string, unknown>
+  workflowStatus: string
+  adminNotes: string
+  checklist: OpportunityChecklistItem[]
+  nextReviewAt: string | null
+  decisionUpdatedAt: string | null
   firstSeenAt: string
   lastSeenAt: string
+}
+
+type OpportunityChecklistItem = {
+  id: string
+  label: string
+  done: boolean
 }
 
 type ContentBlock = {
@@ -422,6 +436,22 @@ function PortalDashboard({
   const [opportunities, setOpportunities] = useState<OpportunityItem[]>(
     () => overview.opportunities ?? [],
   )
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState(
+    () => overview.opportunities?.[0]?.id ?? "",
+  )
+  const [opportunityWorkflowStatus, setOpportunityWorkflowStatus] = useState(
+    () => overview.opportunities?.[0]?.workflowStatus ?? "new",
+  )
+  const [opportunityNotes, setOpportunityNotes] = useState(
+    () => overview.opportunities?.[0]?.adminNotes ?? "",
+  )
+  const [opportunityChecklist, setOpportunityChecklist] = useState<OpportunityChecklistItem[]>(
+    () => overview.opportunities?.[0]?.checklist ?? [],
+  )
+  const [opportunityNextReviewAt, setOpportunityNextReviewAt] = useState(
+    () => overview.opportunities?.[0]?.nextReviewAt?.slice(0, 16) ?? "",
+  )
+  const [savingOpportunityWorkflow, setSavingOpportunityWorkflow] = useState(false)
   const [refreshingOpportunities, setRefreshingOpportunities] = useState(false)
   const [opportunityMessage, setOpportunityMessage] = useState("")
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
@@ -445,6 +475,26 @@ function PortalDashboard({
   const hasContentDiff =
     Boolean(selectedContent) &&
     contentDraft.trim() !== selectedContent.publishedValue.trim()
+  const selectedOpportunity =
+    opportunities.find((item) => item.id === selectedOpportunityId) ??
+    opportunities[0]
+
+  useEffect(() => {
+    if (!selectedOpportunity && opportunities[0]) {
+      setSelectedOpportunityId(opportunities[0].id)
+    }
+  }, [opportunities, selectedOpportunity])
+
+  useEffect(() => {
+    if (!selectedOpportunity) {
+      return
+    }
+
+    setOpportunityWorkflowStatus(selectedOpportunity.workflowStatus)
+    setOpportunityNotes(selectedOpportunity.adminNotes)
+    setOpportunityChecklist(selectedOpportunity.checklist)
+    setOpportunityNextReviewAt(selectedOpportunity.nextReviewAt?.slice(0, 16) ?? "")
+  }, [selectedOpportunity])
 
   function formatAuditDate(value: string) {
     const date = new Date(value)
@@ -513,6 +563,10 @@ function PortalDashboard({
       return "NEN stav"
     }
 
+    if (sourceType === "nen_import") {
+      return "NEN import"
+    }
+
     if (sourceType === "curated_watch") {
       return "Watchlist"
     }
@@ -560,6 +614,50 @@ function PortalDashboard({
     return "Sledování"
   }
 
+  function opportunityWorkflowLabel(status: string) {
+    const labels: Record<string, string> = {
+      new: "Nové",
+      verify: "Ověřit",
+      good_fit: "Vhodné",
+      not_fit: "Nevhodné",
+      in_progress: "Rozpracováno",
+      submitted: "Podáno / osloveno",
+    }
+
+    return labels[status] ?? "Ověřit"
+  }
+
+  function suggestedOpportunityChecklist(item: OpportunityItem): OpportunityChecklistItem[] {
+    const base = [
+      "Ověřit aktuální detail zdroje a deadline",
+      "Zkontrolovat shodu se službami FKdev",
+    ]
+    const byCategory: Record<string, string[]> = {
+      grant: [
+        "Ověřit oprávněnost podle IČO, sídla a velikosti podniku",
+        "Zapsat požadované přílohy a finanční spoluúčast",
+      ],
+      eu_call: [
+        "Ověřit typ žadatele a nutnost partnerů",
+        "Rozhodnout, zda jít samostatně nebo jako subdodavatel",
+      ],
+      public_procurement: [
+        "Ověřit kvalifikační podmínky a reference",
+        "Zkontrolovat lhůtu, rozpočet a způsob podání nabídky",
+      ],
+      market_signal: [
+        "Dohledat firmu nebo regionální kontext",
+        "Připravit krátké oslovení s relevantní službou",
+      ],
+    }
+
+    return [...base, ...(byCategory[item.category] ?? [])].map((label) => ({
+      id: `suggested-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      label,
+      done: false,
+    }))
+  }
+
   async function refreshOpportunities() {
     setRefreshingOpportunities(true)
     setOpportunityMessage("")
@@ -581,11 +679,130 @@ function PortalDashboard({
       }
 
       setOpportunities(data.opportunities)
+      if (!selectedOpportunityId && data.opportunities[0]) {
+        setSelectedOpportunityId(data.opportunities[0].id)
+      }
       setOpportunityMessage(`Radar obnoven: ${data.count ?? data.opportunities.length} zdrojů.`)
     } catch {
       setOpportunityMessage("Radar teď není dostupný. Zkuste to znovu.")
     } finally {
       setRefreshingOpportunities(false)
+    }
+  }
+
+  function selectOpportunity(item: OpportunityItem) {
+    setSelectedOpportunityId(item.id)
+    setOpportunityMessage("")
+  }
+
+  function addOpportunityChecklistItem(label = "") {
+    setOpportunityChecklist((current) => [
+      ...current,
+      {
+        id: `local-${Date.now()}-${current.length}`,
+        label,
+        done: false,
+      },
+    ])
+  }
+
+  function updateOpportunityChecklistItem(
+    itemId: string,
+    patch: Partial<OpportunityChecklistItem>,
+  ) {
+    setOpportunityChecklist((current) =>
+      current.map((item) =>
+        item.id === itemId ? { ...item, ...patch } : item,
+      ),
+    )
+  }
+
+  function removeOpportunityChecklistItem(itemId: string) {
+    setOpportunityChecklist((current) =>
+      current.filter((item) => item.id !== itemId),
+    )
+  }
+
+  function createOpportunityChecklist() {
+    if (!selectedOpportunity) {
+      return
+    }
+
+    setOpportunityChecklist((current) =>
+      current.length > 0 ? current : suggestedOpportunityChecklist(selectedOpportunity),
+    )
+  }
+
+  function generateOpportunityDraft() {
+    if (!selectedOpportunity) {
+      return
+    }
+
+    const deadline = selectedOpportunity.deadline
+      ? formatOpportunityDeadline(selectedOpportunity.deadline)
+      : "není uveden"
+    const checklist = opportunityChecklist.length > 0
+      ? opportunityChecklist
+      : suggestedOpportunityChecklist(selectedOpportunity)
+
+    setOpportunityChecklist(checklist)
+    setOpportunityNotes(
+      [
+        `Shrnutí: ${selectedOpportunity.title}`,
+        `Kategorie: ${opportunityCategoryLabel(selectedOpportunity.category)}`,
+        `Deadline: ${deadline}`,
+        `Relevantnost: skóre ${selectedOpportunity.score}; ${selectedOpportunity.matchReasons.slice(0, 2).join(" ")}`,
+        `Doporučený další krok: ${selectedOpportunity.nextAction}`,
+        "",
+        "Návrh oslovení / interní poznámka:",
+        `Dobrý den, narazil jsem na Vaši položku „${selectedOpportunity.title}“. Mohu pomoct s webovou aplikací, automatizací, integrací API nebo technickou konzultací podle rozsahu zadání. Rád rychle ověřím, zda dává smysl navrhnout konkrétní postup.`,
+      ].join("\n"),
+    )
+  }
+
+  async function saveOpportunityWorkflow() {
+    if (!selectedOpportunity) {
+      return
+    }
+
+    setSavingOpportunityWorkflow(true)
+    setOpportunityMessage("")
+
+    try {
+      const response = await fetch("/api/admin/opportunity-workflow", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opportunityId: selectedOpportunity.id,
+          workflowStatus: opportunityWorkflowStatus,
+          adminNotes: opportunityNotes,
+          checklist: opportunityChecklist,
+          nextReviewAt: opportunityNextReviewAt
+            ? new Date(opportunityNextReviewAt).toISOString()
+            : null,
+        }),
+      })
+      const data = await readJson<{
+        opportunity?: OpportunityItem
+        message?: string
+      }>(response)
+
+      if (!response.ok || !data.opportunity) {
+        setOpportunityMessage(data.message ?? "Stav příležitosti se nepodařilo uložit.")
+        return
+      }
+
+      setOpportunities((current) =>
+        current.map((item) =>
+          item.id === data.opportunity?.id ? data.opportunity : item,
+        ),
+      )
+      setOpportunityMessage("Stav příležitosti je uložený.")
+    } catch {
+      setOpportunityMessage("Stav příležitosti teď nejde uložit. Zkuste to znovu.")
+    } finally {
+      setSavingOpportunityWorkflow(false)
     }
   }
 
@@ -620,6 +837,24 @@ function PortalDashboard({
         .slice(0, snapshotLimit),
     [providerSnapshots, snapshotLimit, snapshotStatus],
   )
+  const opportunityStats = useMemo(() => {
+    const now = Date.now()
+    const inSevenDays = now + 7 * 24 * 60 * 60 * 1000
+
+    return {
+      newItems: opportunities.filter((item) => item.workflowStatus === "new").length,
+      toVerify: opportunities.filter((item) => item.workflowStatus === "verify").length,
+      goodFit: opportunities.filter((item) => item.workflowStatus === "good_fit").length,
+      dueSoon: opportunities.filter((item) => {
+        if (!item.deadline) {
+          return false
+        }
+
+        const deadline = new Date(item.deadline).getTime()
+        return !Number.isNaN(deadline) && deadline >= now && deadline <= inSevenDays
+      }).length,
+    }
+  }, [opportunities])
 
   function selectContentBlock(key: string) {
     const next = contentBlocks.find((block) => block.key === key)
@@ -1012,12 +1247,35 @@ function PortalDashboard({
             </p>
           ) : null}
 
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Nové", opportunityStats.newItems],
+              ["Ověřit", opportunityStats.toVerify],
+              ["Vhodné", opportunityStats.goodFit],
+              ["Deadline do 7 dnů", opportunityStats.dueSoon],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-3"
+              >
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             {opportunities.length > 0 ? (
               opportunities.map((item) => (
                 <article
                   key={item.id || item.sourceId}
-                  className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                  className={`rounded-[var(--radius)] border p-4 ${
+                    selectedOpportunity?.id === item.id
+                      ? "border-foreground/40 bg-background/45"
+                      : "border-border/60 bg-background/30"
+                  }`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -1039,7 +1297,10 @@ function PortalDashboard({
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded-full border border-border/50 px-2.5 py-1">
-                      stav {item.status}
+                      zdroj {item.status}
+                    </span>
+                    <span className="rounded-full border border-border/50 px-2.5 py-1">
+                      workflow {opportunityWorkflowLabel(item.workflowStatus)}
                     </span>
                     {item.deadline ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-border/50 px-2.5 py-1">
@@ -1077,14 +1338,23 @@ function PortalDashboard({
                     <span className="text-xs text-muted-foreground">
                       Aktualizováno {formatAuditDate(item.lastSeenAt)}
                     </span>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
-                    >
-                      Otevřít zdroj
-                    </a>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => selectOpportunity(item)}
+                        className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        Detail
+                      </button>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        Otevřít zdroj
+                      </a>
+                    </div>
                   </div>
                 </article>
               ))
@@ -1094,6 +1364,160 @@ function PortalDashboard({
               </div>
             )}
           </div>
+
+          {selectedOpportunity ? (
+            <div className="mt-6 grid gap-5 rounded-[var(--radius)] border border-border/70 bg-background/35 p-4 lg:grid-cols-[1fr_0.9fr]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <ListChecks className="h-5 w-5 text-foreground/90" aria-hidden />
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-foreground">
+                      Detail příležitosti
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {selectedOpportunity.title}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-2 text-sm text-muted-foreground">
+                    Workflow stav
+                    <select
+                      value={opportunityWorkflowStatus}
+                      onChange={(event) => setOpportunityWorkflowStatus(event.target.value)}
+                      className="rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+                    >
+                      {["new", "verify", "good_fit", "not_fit", "in_progress", "submitted"].map((status) => (
+                        <option key={status} value={status}>
+                          {opportunityWorkflowLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-sm text-muted-foreground">
+                    Další kontrola
+                    <input
+                      type="datetime-local"
+                      value={opportunityNextReviewAt}
+                      onChange={(event) => setOpportunityNextReviewAt(event.target.value)}
+                      className="rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+                    />
+                  </label>
+                </div>
+
+                <label className="mt-4 grid gap-2 text-sm text-muted-foreground">
+                  Poznámky
+                  <textarea
+                    value={opportunityNotes}
+                    onChange={(event) => setOpportunityNotes(event.target.value)}
+                    rows={6}
+                    className="resize-y rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus:border-foreground/50"
+                    placeholder="Shrnutí rozhodnutí, podmínky, rizika nebo další kroky."
+                  />
+                </label>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => void saveOpportunityWorkflow()}
+                    disabled={savingOpportunityWorkflow}
+                  >
+                    {savingOpportunityWorkflow ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Save className="h-4 w-4" aria-hidden />
+                    )}
+                    Uložit stav
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={createOpportunityChecklist}
+                  >
+                    <ListChecks className="h-4 w-4" aria-hidden />
+                    Vytvořit checklist
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={generateOpportunityDraft}
+                  >
+                    <ScrollText className="h-4 w-4" aria-hidden />
+                    Návrh postupu
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-[var(--radius)] border border-border/60 bg-background/25 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-display text-base font-semibold text-foreground">
+                    Checklist
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => addOpportunityChecklistItem()}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-foreground hover:border-foreground/50"
+                    aria-label="Přidat položku checklistu"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  {opportunityChecklist.length > 0 ? (
+                    opportunityChecklist.map((item) => (
+                      <div
+                        key={item.id}
+                        className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border border-border/50 bg-background/25 p-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={item.done}
+                          onChange={(event) =>
+                            updateOpportunityChecklistItem(item.id, {
+                              done: event.target.checked,
+                            })
+                          }
+                          className="h-4 w-4"
+                          aria-label={`Splněno: ${item.label}`}
+                        />
+                        <input
+                          type="text"
+                          value={item.label}
+                          onChange={(event) =>
+                            updateOpportunityChecklistItem(item.id, {
+                              label: event.target.value,
+                            })
+                          }
+                          className="min-w-0 rounded-md border border-border/60 bg-background/60 px-2 py-1.5 text-sm text-foreground outline-none focus:border-foreground/50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeOpportunityChecklistItem(item.id)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                          aria-label={`Odebrat: ${item.label}`}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Checklist zatím není založený.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3 text-xs leading-relaxed text-muted-foreground">
+                  Poslední rozhodnutí:{" "}
+                  {selectedOpportunity.decisionUpdatedAt
+                    ? formatAuditDate(selectedOpportunity.decisionUpdatedAt)
+                    : "zatím neuloženo"}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {selectedContent ? (

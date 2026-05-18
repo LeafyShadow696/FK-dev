@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from html import unescape
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import unquote, urljoin
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -95,6 +95,11 @@ class Opportunity:
     match_reasons: list[str]
     next_action: str
     metadata: dict[str, Any]
+    workflow_status: str
+    admin_notes: str
+    checklist: list[dict[str, Any]]
+    next_review_at: str | None
+    decision_updated_at: str | None
     first_seen_at: str
     last_seen_at: str
 
@@ -226,6 +231,11 @@ def init_database(engine: Engine | None = None) -> bool:
               match_reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
               next_action text NOT NULL,
               metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              workflow_status text NOT NULL DEFAULT 'new',
+              admin_notes text NOT NULL DEFAULT '',
+              checklist jsonb NOT NULL DEFAULT '[]'::jsonb,
+              next_review_at timestamptz,
+              decision_updated_at timestamptz,
               first_seen_at timestamptz NOT NULL DEFAULT now(),
               last_seen_at timestamptz NOT NULL DEFAULT now()
             )
@@ -320,6 +330,11 @@ def init_database(engine: Engine | None = None) -> bool:
               match_reasons text NOT NULL DEFAULT '[]',
               next_action text NOT NULL,
               metadata text NOT NULL DEFAULT '{}',
+              workflow_status text NOT NULL DEFAULT 'new',
+              admin_notes text NOT NULL DEFAULT '',
+              checklist text NOT NULL DEFAULT '[]',
+              next_review_at text,
+              decision_updated_at text,
               first_seen_at text NOT NULL,
               last_seen_at text NOT NULL
             )
@@ -331,8 +346,36 @@ def init_database(engine: Engine | None = None) -> bool:
     with engine.begin() as connection:
         for statement in statements:
             connection.execute(text(statement))
+        _ensure_opportunity_workflow_columns(connection, engine.dialect.name)
 
     return True
+
+
+def _ensure_opportunity_workflow_columns(connection: Any, dialect_name: str) -> None:
+    columns = {
+        "workflow_status": "text NOT NULL DEFAULT 'new'",
+        "admin_notes": "text NOT NULL DEFAULT ''",
+        "checklist": "jsonb NOT NULL DEFAULT '[]'::jsonb" if dialect_name == "postgresql" else "text NOT NULL DEFAULT '[]'",
+        "next_review_at": "timestamptz" if dialect_name == "postgresql" else "text",
+        "decision_updated_at": "timestamptz" if dialect_name == "postgresql" else "text",
+    }
+
+    if dialect_name == "postgresql":
+        for name, definition in columns.items():
+            connection.execute(
+                text(f"ALTER TABLE admin_opportunities ADD COLUMN IF NOT EXISTS {name} {definition}"),
+            )
+        return
+
+    existing = {
+        str(row["name"])
+        for row in connection.execute(text("PRAGMA table_info(admin_opportunities)")).mappings()
+    }
+    for name, definition in columns.items():
+        if name not in existing:
+            connection.execute(
+                text(f"ALTER TABLE admin_opportunities ADD COLUMN {name} {definition}"),
+            )
 
 
 def database_status() -> DatabaseStatus:
@@ -751,6 +794,7 @@ OPPORTUNITY_RESPONSE_LIMIT_BYTES = 8_000_000
 MPSV_FULL_DATASET_URL = "https://data.mpsv.cz/od/soubory/volna-mista/volna-mista.json"
 API_OP_TAK_CALLS_URL = "https://apiagentura.gov.cz/cs/radce/vsechny-vyzvy/"
 NEN_PUBLIC_PROCUREMENT_URL = "https://portal-vz.cz/nipez/nen-2/"
+NEN_PUBLIC_PROCUREMENT_LIST_URL = "https://nen.nipez.cz/verejne-zakazky/p%3Avz%3Apage%3D1-3%3Bdns%3Apage%3D3-6%3Bvestnik%3Apage%3D1-2"
 
 MPSV_IT_KEYWORDS = [
     "automatizace",
@@ -800,7 +844,6 @@ GRANT_KEYWORDS = [
     "vysokorychlostní internet",
 ]
 TENDER_KEYWORDS = [
-    "api",
     "automatizace",
     "data",
     "digitalizace",
@@ -922,6 +965,19 @@ def _deadline_from_text(text_value: str) -> str | None:
         return matches[-1]
 
     return max(parsed_dates, key=lambda item: item[0])[1]
+
+
+def _initial_redux_state(html: str) -> dict[str, Any]:
+    match = re.search(r'<meta name="initialReduxState" content="([^"]+)"', html)
+    if not match:
+        return {}
+
+    try:
+        parsed = json.loads(unquote(unescape(match.group(1))))
+    except json.JSONDecodeError:
+        return {}
+
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _parse_cz_datetime(value: str) -> datetime | None:
@@ -1178,39 +1234,129 @@ def import_public_procurement_opportunities(now: datetime) -> list[dict[str, Any
     imported_at = now.isoformat()
 
     try:
-        html = _read_url_text(NEN_PUBLIC_PROCUREMENT_URL)
+        html = _read_url_text(NEN_PUBLIC_PROCUREMENT_LIST_URL)
     except (OSError, URLError, TimeoutError, ValueError, UnicodeDecodeError) as error:
-        source_status = f"Zdroj se nepodařilo načíst: {str(error)[:160]}"
-    else:
-        source_status = "Oficiální informační stránka NEN je dostupná; konkrétní vyhledávání zakázek vyžaduje napojení na NEN veřejné API nebo parametrizované vyhledávání."
-        search_text = _normalize_search_text(_plain_text_from_html(html))
-        if any(_normalize_search_text(keyword) in search_text for keyword in TENDER_KEYWORDS):
-            source_status = "Oficiální stránka NEN je dostupná a potvrzuje veřejné zadávání zakázek v NEN; další krok je doplnit konkrétní API dotaz podle CPV/NIPEZ kódů."
+        return [
+            _nen_import_status(
+                imported_at=imported_at,
+                summary=f"Zdroj se nepodařilo načíst: {str(error)[:160]}",
+            ),
+        ]
+
+    imported = _nen_opportunities_from_html(
+        html,
+        source_url=NEN_PUBLIC_PROCUREMENT_LIST_URL,
+        imported_at=imported_at,
+    )
+    if imported:
+        return imported
 
     return [
-        {
-            "source_id": "nen-public-procurement-import-status",
-            "category": "public_procurement",
-            "title": "NEN import: připravit konkrétní dotaz pro IT/web zakázky",
-            "summary": source_status,
-            "url": NEN_PUBLIC_PROCUREMENT_URL,
-            "region": "ČR / filtrovat Vysočina a okolní kraje",
-            "status": "watching",
-            "deadline": None,
-            "keywords": ["NEN", "veřejné zakázky", "NIPEZ", "CPV", "IT služby", "software", "web"],
-            "score": 61,
-            "match_reasons": [
-                "NEN je oficiální elektronický nástroj pro zadávání veřejných zakázek.",
-                "Pro konkrétní import je potřeba doplnit stabilní API/CPV filtr pro IT, weby a automatizaci.",
-            ],
-            "next_action": "Doplnit mapu CPV/NIPEZ kódů pro software, webové portály a IT služby, potom ukládat konkrétní otevřené zakázky s lhůtou.",
-            "metadata": {
-                "source_type": "nen_import_status",
-                "raw_source": NEN_PUBLIC_PROCUREMENT_URL,
-                "imported_at": imported_at,
-            },
-        },
+        _nen_import_status(
+            imported_at=imported_at,
+            summary="Veřejný seznam NEN byl dostupný, ale poslední načtená dávka neobsahovala položku odpovídající IT/web klíčovým slovům.",
+        ),
     ]
+
+
+def _nen_opportunities_from_html(
+    html: str,
+    *,
+    source_url: str,
+    imported_at: str,
+) -> list[dict[str, Any]]:
+    state = _initial_redux_state(html)
+    collections = (
+        state.get("collectionStore", {})
+        .get("collections", {})
+        .get("verejne-zakazky-seznam", {})
+    )
+    records = collections.get("collection", [])
+    if not isinstance(records, list):
+        return []
+
+    opportunities: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+
+        text_value = _normalize_search_text(_nested_text(record))
+        matched = [keyword for keyword in TENDER_KEYWORDS if _normalize_search_text(keyword) in text_value]
+        if not matched:
+            continue
+
+        title = str(record.get("nazev") or record.get("name") or "NEN veřejná zakázka").strip()
+        code = str(record.get("kod") or record.get("code") or record.get("id") or "").strip()
+        contracting_authority = str(record.get("zadavatelNazev") or record.get("zadavatel") or "").strip()
+        deadline = str(record.get("podaniLhuta") or record.get("lhuta") or "").strip() or None
+        detail_path = f"/verejne-zakazky/detail-zakazky/{record.get('id')}" if record.get("id") else "/verejne-zakazky"
+        url = urljoin("https://nen.nipez.cz", detail_path)
+
+        score = 72
+        reasons = ["Importovaná veřejná zakázka z veřejného seznamu NEN."]
+        if deadline:
+            score += 6
+            reasons.append("Zakázka má dohledatelnou lhůtu pro podání.")
+        if contracting_authority:
+            score += 4
+            reasons.append("Záznam obsahuje zadavatele pro rychlé ověření relevance.")
+
+        opportunities.append(
+            {
+                "source_id": _stable_source_id("nen", code, title, deadline),
+                "category": "public_procurement",
+                "title": title[:180],
+                "summary": (
+                    f"NEN záznam odpovídá klíčovým slovům pro IT, software, web nebo digitalizaci."
+                    + (f" Zadavatel: {contracting_authority}." if contracting_authority else "")
+                ),
+                "url": url,
+                "region": "ČR / ověřit detail v NEN",
+                "status": "imported",
+                "deadline": deadline,
+                "keywords": sorted(set(matched)),
+                "score": min(score, 100),
+                "match_reasons": reasons,
+                "next_action": "Otevřít detail v NEN, ověřit zadávací dokumentaci, kvalifikaci, lhůtu a zda dává smysl podat nabídku nebo poslat dotaz zadavateli.",
+                "metadata": {
+                    "source_type": "nen_import",
+                    "raw_source": source_url,
+                    "imported_at": imported_at,
+                    "code": code,
+                    "contracting_authority": contracting_authority,
+                },
+            },
+        )
+
+        if len(opportunities) >= OPPORTUNITY_IMPORT_LIMIT:
+            break
+
+    return opportunities
+
+
+def _nen_import_status(*, imported_at: str, summary: str) -> dict[str, Any]:
+    return {
+        "source_id": "nen-public-procurement-import-status",
+        "category": "public_procurement",
+        "title": "NEN import: hlídání IT/web zakázek",
+        "summary": summary,
+        "url": NEN_PUBLIC_PROCUREMENT_LIST_URL,
+        "region": "ČR / filtrovat Vysočina a okolní kraje",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["NEN", "veřejné zakázky", "NIPEZ", "CPV", "IT služby", "software", "web"],
+        "score": 61,
+        "match_reasons": [
+            "NEN je oficiální elektronický nástroj pro zadávání veřejných zakázek.",
+            "Parser veřejného seznamu běží konzervativně nad položkami dostupnými v HTML snapshotu.",
+        ],
+        "next_action": "Zkontrolovat konkrétní NEN položky a průběžně doplnit přesnější CPV/NIPEZ filtr pro software, webové portály a IT služby.",
+        "metadata": {
+            "source_type": "nen_import_status",
+            "raw_source": NEN_PUBLIC_PROCUREMENT_LIST_URL,
+            "imported_at": imported_at,
+        },
+    }
 
 
 def import_live_opportunities(now: datetime) -> list[dict[str, Any]]:
@@ -1399,6 +1545,132 @@ def refresh_opportunities() -> list[Opportunity]:
     return refreshed
 
 
+OPPORTUNITY_WORKFLOW_STATUSES = {
+    "new",
+    "verify",
+    "good_fit",
+    "not_fit",
+    "in_progress",
+    "submitted",
+}
+
+
+def _sanitize_checklist(checklist: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+
+    for item in checklist[:20]:
+        label = str(item.get("label", "")).strip()
+        if not label:
+            continue
+
+        sanitized.append(
+            {
+                "id": str(item.get("id") or _stable_source_id("check", label))[:80],
+                "label": label[:220],
+                "done": bool(item.get("done", False)),
+            },
+        )
+
+    return sanitized
+
+
+def update_opportunity_workflow(
+    *,
+    opportunity_id: str,
+    workflow_status: str,
+    admin_notes: str,
+    checklist: list[dict[str, Any]],
+    next_review_at: str | None = None,
+) -> Opportunity | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    normalized_status = workflow_status if workflow_status in OPPORTUNITY_WORKFLOW_STATUSES else "verify"
+    normalized_checklist = _sanitize_checklist(checklist)
+    notes = admin_notes.strip()[:4000]
+    now = datetime.now(UTC).isoformat()
+    parsed_review = _parse_optional_datetime(next_review_at)
+    review_value = parsed_review.isoformat() if parsed_review else None
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
+            result = connection.execute(
+                text(
+                    """
+                    UPDATE admin_opportunities
+                    SET workflow_status = :workflow_status,
+                        admin_notes = :admin_notes,
+                        checklist = CAST(:checklist AS jsonb),
+                        next_review_at = :next_review_at,
+                        decision_updated_at = now()
+                    WHERE id = CAST(:id AS uuid)
+                    """,
+                ),
+                {
+                    "id": opportunity_id,
+                    "workflow_status": normalized_status,
+                    "admin_notes": notes,
+                    "checklist": json.dumps(normalized_checklist),
+                    "next_review_at": review_value,
+                },
+            )
+        else:
+            result = connection.execute(
+                text(
+                    """
+                    UPDATE admin_opportunities
+                    SET workflow_status = :workflow_status,
+                        admin_notes = :admin_notes,
+                        checklist = :checklist,
+                        next_review_at = :next_review_at,
+                        decision_updated_at = :decision_updated_at
+                    WHERE id = :id
+                    """,
+                ),
+                {
+                    "id": opportunity_id,
+                    "workflow_status": normalized_status,
+                    "admin_notes": notes,
+                    "checklist": json.dumps(normalized_checklist),
+                    "next_review_at": review_value,
+                    "decision_updated_at": now,
+                },
+            )
+
+        if result.rowcount == 0:
+            return None
+
+    return get_opportunity(opportunity_id)
+
+
+def _parse_optional_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+
+    stripped = value.strip()
+    if not stripped:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(stripped.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+
+    return parsed.astimezone(UTC)
+
+
+def get_opportunity(opportunity_id: str) -> Opportunity | None:
+    opportunities = list_opportunities(limit=50)
+    return next((item for item in opportunities if item.id == opportunity_id), None)
+
+
 def list_opportunities(limit: int = 12) -> list[Opportunity]:
     engine = get_engine()
 
@@ -1414,7 +1686,8 @@ def list_opportunities(limit: int = 12) -> list[Opportunity]:
                 """
                 SELECT id, source_id, category, title, summary, url, region, status,
                        deadline, score, match_reasons, next_action, metadata,
-                       first_seen_at, last_seen_at
+                       workflow_status, admin_notes, checklist, next_review_at,
+                       decision_updated_at, first_seen_at, last_seen_at
                 FROM admin_opportunities
                 ORDER BY score DESC, last_seen_at DESC
                 LIMIT :limit
@@ -1427,6 +1700,7 @@ def list_opportunities(limit: int = 12) -> list[Opportunity]:
         for row in rows:
             match_reasons = _json_value(row["match_reasons"])
             metadata = _json_value(row["metadata"])
+            checklist = _json_value(row["checklist"])
             opportunities.append(
                 Opportunity(
                     id=str(row["id"]),
@@ -1442,6 +1716,11 @@ def list_opportunities(limit: int = 12) -> list[Opportunity]:
                     match_reasons=match_reasons if isinstance(match_reasons, list) else [],
                     next_action=str(row["next_action"]),
                     metadata=metadata if isinstance(metadata, dict) else {},
+                    workflow_status=str(row["workflow_status"] or "new"),
+                    admin_notes=str(row["admin_notes"] or ""),
+                    checklist=checklist if isinstance(checklist, list) else [],
+                    next_review_at=str(row["next_review_at"]) if row["next_review_at"] else None,
+                    decision_updated_at=str(row["decision_updated_at"]) if row["decision_updated_at"] else None,
                     first_seen_at=str(row["first_seen_at"]),
                     last_seen_at=str(row["last_seen_at"]),
                 ),

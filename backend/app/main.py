@@ -20,6 +20,7 @@ from .database import (
     refresh_opportunities,
     rollback_content_version,
     telemetry_summary,
+    update_opportunity_workflow,
     upsert_content_block,
 )
 from .settings import get_settings
@@ -192,6 +193,11 @@ class OpportunityItem(BaseModel):
     match_reasons: list[str]
     next_action: str
     metadata: dict[str, Any]
+    workflow_status: str
+    admin_notes: str
+    checklist: list[dict[str, Any]]
+    next_review_at: str | None
+    decision_updated_at: str | None
     first_seen_at: str
     last_seen_at: str
 
@@ -204,6 +210,18 @@ class OpportunitiesRefreshResponse(BaseModel):
     refreshed: bool
     count: int
     opportunities: list[OpportunityItem]
+
+
+class OpportunityWorkflowRequest(BaseModel):
+    workflow_status: str = Field(min_length=2, max_length=40)
+    admin_notes: str = Field(default="", max_length=4000)
+    checklist: list[dict[str, Any]] = Field(default_factory=list)
+    next_review_at: str | None = Field(default=None, max_length=80)
+
+
+class OpportunityWorkflowResponse(BaseModel):
+    stored: bool
+    opportunity: OpportunityItem | None
 
 
 class ContentRollbackRequest(BaseModel):
@@ -494,6 +512,43 @@ def admin_opportunities_refresh(
         refreshed=True,
         count=len(opportunities),
         opportunities=opportunities,
+    )
+
+
+@app.post("/admin/opportunities/{opportunity_id}/workflow", response_model=OpportunityWorkflowResponse)
+def admin_opportunity_workflow(
+    opportunity_id: str,
+    payload: OpportunityWorkflowRequest,
+    request: Request,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> OpportunityWorkflowResponse:
+    require_backend_token(x_fk_backend_token)
+    opportunity = update_opportunity_workflow(
+        opportunity_id=opportunity_id,
+        workflow_status=payload.workflow_status,
+        admin_notes=payload.admin_notes,
+        checklist=payload.checklist,
+        next_review_at=payload.next_review_at,
+    )
+
+    if opportunity is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found.")
+
+    record_audit_event(
+        "opportunity.workflow_saved",
+        actor="admin",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        metadata={
+            "opportunity_id": opportunity_id,
+            "source_id": opportunity.source_id,
+            "workflow_status": opportunity.workflow_status,
+        },
+    )
+
+    return OpportunityWorkflowResponse(
+        stored=True,
+        opportunity=OpportunityItem(**opportunity.__dict__),
     )
 
 
