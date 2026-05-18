@@ -73,6 +73,25 @@ class TelemetrySummary:
     recent_events: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class Opportunity:
+    id: str
+    source_id: str
+    category: str
+    title: str
+    summary: str
+    url: str
+    region: str
+    status: str
+    deadline: str | None
+    score: int
+    match_reasons: list[str]
+    next_action: str
+    metadata: dict[str, Any]
+    first_seen_at: str
+    last_seen_at: str
+
+
 _engine: Engine | None = None
 
 
@@ -185,6 +204,27 @@ def init_database(engine: Engine | None = None) -> bool:
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_created_at ON admin_telemetry_events (created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_session_created ON admin_telemetry_events (session_id, created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_path_created ON admin_telemetry_events (path, created_at DESC)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_opportunities (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              source_id text NOT NULL UNIQUE,
+              category text NOT NULL,
+              title text NOT NULL,
+              summary text NOT NULL,
+              url text NOT NULL,
+              region text NOT NULL,
+              status text NOT NULL,
+              deadline timestamptz,
+              score integer NOT NULL,
+              match_reasons jsonb NOT NULL DEFAULT '[]'::jsonb,
+              next_action text NOT NULL,
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              first_seen_at timestamptz NOT NULL DEFAULT now(),
+              last_seen_at timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_score_seen ON admin_opportunities (score DESC, last_seen_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_category ON admin_opportunities (category)",
         ]
     else:
         statements = [
@@ -258,6 +298,27 @@ def init_database(engine: Engine | None = None) -> bool:
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_created_at ON admin_telemetry_events (created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_session_created ON admin_telemetry_events (session_id, created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_path_created ON admin_telemetry_events (path, created_at DESC)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_opportunities (
+              id text PRIMARY KEY,
+              source_id text NOT NULL UNIQUE,
+              category text NOT NULL,
+              title text NOT NULL,
+              summary text NOT NULL,
+              url text NOT NULL,
+              region text NOT NULL,
+              status text NOT NULL,
+              deadline text,
+              score integer NOT NULL,
+              match_reasons text NOT NULL DEFAULT '[]',
+              next_action text NOT NULL,
+              metadata text NOT NULL DEFAULT '{}',
+              first_seen_at text NOT NULL,
+              last_seen_at text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_score_seen ON admin_opportunities (score DESC, last_seen_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_category ON admin_opportunities (category)",
         ]
 
     with engine.begin() as connection:
@@ -589,8 +650,277 @@ def export_admin_data() -> dict[str, Any]:
                 "admin_telemetry_events",
                 "created_at DESC",
             ),
+            "admin_opportunities": _export_rows(
+                "admin_opportunities",
+                "score DESC, last_seen_at DESC",
+            ),
         },
     }
+
+
+OPPORTUNITY_PROFILE = {
+    "business_name": "František Kalášek",
+    "ico": "23628588",
+    "base_region": "Daňkovice / Žďár nad Sázavou / Vysočina",
+    "activities": [
+        "software development",
+        "IT consulting",
+        "data processing",
+        "hosting and web portals",
+        "automation",
+        "digitalization",
+        "marketing and media representation",
+        "education and training",
+    ],
+}
+
+
+SEED_OPPORTUNITIES: list[dict[str, Any]] = [
+    {
+        "source_id": "cz-public-procurement-it-web-automation",
+        "category": "public_procurement",
+        "title": "Veřejné zakázky: weby, portály, automatizace a IT služby",
+        "summary": "Sledování NEN a navázaných veřejných zakázek pro poptávky po webech, interních portálech, PWA, automatizaci, digitalizaci a IT konzultacích.",
+        "url": "https://portal-vz.cz/nipez/nen-2/",
+        "region": "ČR / filtrovat Vysočina a okolní kraje",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["web", "portál", "PWA", "automatizace", "software", "IT služby", "digitalizace"],
+        "next_action": "Jednou denně otevřít výsledky pro klíčová slova a uložit konkrétní zakázky s lhůtou, rozpočtem a kvalifikačními podmínkami.",
+    },
+    {
+        "source_id": "mpsv-market-demand-it-digital",
+        "category": "market_signal",
+        "title": "Regionální signál poptávky: IT, software a digitalizace",
+        "summary": "Otevřená data MPSV o volných místech pomohou sledovat, kde firmy hledají IT/digitální kompetence. Nejde o přímou zakázku, ale o poptávkový signál pro oslovení trhu.",
+        "url": "https://data.mpsv.cz/web/data/zamestnanost",
+        "region": "Vysočina + ČR trend",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["programátor", "software", "IT", "správce", "data", "web", "automatizace"],
+        "next_action": "Doplnit parser CSV datasetů MPSV a počítat trend podle regionu a klíčových slov.",
+    },
+    {
+        "source_id": "optak-api-digitalization-grants",
+        "category": "grant",
+        "title": "OP TAK / API: digitalizace, technologie a inovace",
+        "summary": "Primární dotační zdroj pro malé a střední podniky v tématech digitalizace, software, IT infrastruktura, automatizace a inovace.",
+        "url": "https://apiagentura.gov.cz/",
+        "region": "ČR mimo Prahu podle konkrétní výzvy",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["OP TAK", "Digitální podnik", "technologie", "inovace", "software", "IT infrastruktura"],
+        "next_action": "Hlídání nových výzev API a předvyplnění eligibility checklistu podle IČO, sídla, aktivit a de minimis limitů.",
+    },
+    {
+        "source_id": "jdp-grant-portal-business-digital",
+        "category": "grant",
+        "title": "Jednotný dotační portál: podnikání a digitalizace",
+        "summary": "Centrální rozhraní pro příjem žádostí a monitoring vybraných dotačních titulů. Vhodné pro dohledání konkrétních žádostí a auditní stopy.",
+        "url": "https://jdp.mf.gov.cz/rispf/Home/About",
+        "region": "ČR",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["dotace", "podnikání", "digitalizace", "žádost", "výzva"],
+        "next_action": "Při nalezení vhodné výzvy založit checklist příloh a stav přípravy žádosti.",
+    },
+    {
+        "source_id": "eu-funding-tenders-digital-sme",
+        "category": "eu_call",
+        "title": "EU Funding & Tenders: digitální služby, tendry a SME výzvy",
+        "summary": "Evropský portál pro granty a tendry. Relevantní zejména pro Digital Europe, Single Market Programme, tendry na web/IT služby a konsorciální projekty.",
+        "url": "https://commission.europa.eu/funding-tenders/find-calls-tender_en",
+        "region": "EU / ČR jako účastník",
+        "status": "watching",
+        "deadline": None,
+        "keywords": ["Digital Europe", "SME", "web", "software", "automation", "IT services"],
+        "next_action": "Filtrovat otevřené výzvy podle témat Digital/SME a označit, zda je vhodné jít samostatně nebo jako subdodavatel.",
+    },
+]
+
+
+def _score_opportunity(seed: dict[str, Any]) -> tuple[int, list[str]]:
+    keywords = [str(keyword).lower() for keyword in seed.get("keywords", [])]
+    reasons: list[str] = []
+    score = 35
+
+    if seed["category"] in {"grant", "eu_call"}:
+        score += 20
+        reasons.append("Relevantní pro financování rozvoje podnikání nebo digitalizace.")
+
+    if seed["category"] == "public_procurement":
+        score += 18
+        reasons.append("Může přinést přímou poptávku po nabízených službách.")
+
+    if seed["category"] == "market_signal":
+        score += 10
+        reasons.append("Pomáhá odhalit regionální poptávku po digitálních kompetencích.")
+
+    if any(keyword in {"software", "web", "automatizace", "digitalizace"} for keyword in keywords):
+        score += 18
+        reasons.append("Shoda s činnostmi: software, webové portály, automatizace a IT konzultace.")
+
+    if "Vysočina" in str(seed.get("region", "")) or "ČR" in str(seed.get("region", "")):
+        score += 9
+        reasons.append("Geograficky použitelný zdroj pro sídlo Daňkovice / Vysočina.")
+
+    return min(score, 100), reasons
+
+
+def refresh_opportunities() -> list[Opportunity]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+
+    refreshed: list[Opportunity] = []
+    now = datetime.now(UTC).isoformat()
+
+    with engine.begin() as connection:
+        for seed in SEED_OPPORTUNITIES:
+            score, reasons = _score_opportunity(seed)
+            opportunity_id = str(uuid.uuid4())
+            metadata = {
+                "profile": OPPORTUNITY_PROFILE,
+                "keywords": seed.get("keywords", []),
+                "source_type": "curated_watch",
+            }
+
+            if engine.dialect.name == "postgresql":
+                statement = text(
+                    """
+                    INSERT INTO admin_opportunities
+                      (id, source_id, category, title, summary, url, region, status, deadline, score, match_reasons, next_action, metadata)
+                    VALUES
+                      (:id, :source_id, :category, :title, :summary, :url, :region, :status, :deadline, :score, CAST(:match_reasons AS jsonb), :next_action, CAST(:metadata AS jsonb))
+                    ON CONFLICT (source_id) DO UPDATE SET
+                      category = EXCLUDED.category,
+                      title = EXCLUDED.title,
+                      summary = EXCLUDED.summary,
+                      url = EXCLUDED.url,
+                      region = EXCLUDED.region,
+                      status = EXCLUDED.status,
+                      deadline = EXCLUDED.deadline,
+                      score = EXCLUDED.score,
+                      match_reasons = EXCLUDED.match_reasons,
+                      next_action = EXCLUDED.next_action,
+                      metadata = EXCLUDED.metadata,
+                      last_seen_at = now()
+                    """,
+                )
+                params: dict[str, Any] = {
+                    "id": opportunity_id,
+                    "source_id": seed["source_id"],
+                    "category": seed["category"],
+                    "title": seed["title"],
+                    "summary": seed["summary"],
+                    "url": seed["url"],
+                    "region": seed["region"],
+                    "status": seed["status"],
+                    "deadline": seed["deadline"],
+                    "score": score,
+                    "match_reasons": json.dumps(reasons),
+                    "next_action": seed["next_action"],
+                    "metadata": json.dumps(metadata),
+                }
+            else:
+                statement = text(
+                    """
+                    INSERT INTO admin_opportunities
+                      (id, source_id, category, title, summary, url, region, status, deadline, score, match_reasons, next_action, metadata, first_seen_at, last_seen_at)
+                    VALUES
+                      (:id, :source_id, :category, :title, :summary, :url, :region, :status, :deadline, :score, :match_reasons, :next_action, :metadata, :first_seen_at, :last_seen_at)
+                    ON CONFLICT (source_id) DO UPDATE SET
+                      category = excluded.category,
+                      title = excluded.title,
+                      summary = excluded.summary,
+                      url = excluded.url,
+                      region = excluded.region,
+                      status = excluded.status,
+                      deadline = excluded.deadline,
+                      score = excluded.score,
+                      match_reasons = excluded.match_reasons,
+                      next_action = excluded.next_action,
+                      metadata = excluded.metadata,
+                      last_seen_at = excluded.last_seen_at
+                    """,
+                )
+                params = {
+                    "id": opportunity_id,
+                    "source_id": seed["source_id"],
+                    "category": seed["category"],
+                    "title": seed["title"],
+                    "summary": seed["summary"],
+                    "url": seed["url"],
+                    "region": seed["region"],
+                    "status": seed["status"],
+                    "deadline": seed["deadline"],
+                    "score": score,
+                    "match_reasons": json.dumps(reasons),
+                    "next_action": seed["next_action"],
+                    "metadata": json.dumps(metadata),
+                    "first_seen_at": now,
+                    "last_seen_at": now,
+                }
+
+            connection.execute(statement, params)
+
+    refreshed = list_opportunities(limit=20)
+
+    return refreshed
+
+
+def list_opportunities(limit: int = 12) -> list[Opportunity]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+    safe_limit = max(1, min(limit, 50))
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT id, source_id, category, title, summary, url, region, status,
+                       deadline, score, match_reasons, next_action, metadata,
+                       first_seen_at, last_seen_at
+                FROM admin_opportunities
+                ORDER BY score DESC, last_seen_at DESC
+                LIMIT :limit
+                """,
+            ),
+            {"limit": safe_limit},
+        ).mappings()
+
+        opportunities: list[Opportunity] = []
+        for row in rows:
+            match_reasons = _json_value(row["match_reasons"])
+            metadata = _json_value(row["metadata"])
+            opportunities.append(
+                Opportunity(
+                    id=str(row["id"]),
+                    source_id=str(row["source_id"]),
+                    category=str(row["category"]),
+                    title=str(row["title"]),
+                    summary=str(row["summary"]),
+                    url=str(row["url"]),
+                    region=str(row["region"]),
+                    status=str(row["status"]),
+                    deadline=str(row["deadline"]) if row["deadline"] else None,
+                    score=int(row["score"]),
+                    match_reasons=match_reasons if isinstance(match_reasons, list) else [],
+                    next_action=str(row["next_action"]),
+                    metadata=metadata if isinstance(metadata, dict) else {},
+                    first_seen_at=str(row["first_seen_at"]),
+                    last_seen_at=str(row["last_seen_at"]),
+                ),
+            )
+
+    return opportunities
 
 
 def record_telemetry_event(

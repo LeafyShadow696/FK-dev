@@ -229,6 +229,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - audit events for content draft saves, publishes, blocked publishes, and rollbacks
 - protected admin data export through the FastAPI `/admin/export` endpoint
 - consent-based anonymous live telemetry shown only after admin login
+- Opportunity Radar for grants, public procurement channels, and regional market-demand signals
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`

@@ -27,6 +27,8 @@ Current backend endpoints:
 - `GET /admin/export` - protected JSON export of admin database tables for backups.
 - `POST /admin/telemetry` - protected write endpoint for anonymous consent-based site telemetry.
 - `GET /admin/telemetry/summary` - protected aggregate telemetry summary for `/portal`.
+- `GET /admin/opportunities` - protected ranked watchlist of grants, tenders, and market-demand channels.
+- `POST /admin/opportunities/refresh` - protected refresh of the opportunity radar seed/watch sources.
 
 Content publishing is guarded by the same quality check used by
 `/admin/content/check`. It blocks unsupported guarantee-style claims and invalid

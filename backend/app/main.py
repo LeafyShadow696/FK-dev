@@ -8,6 +8,7 @@ from .content_quality import check_content_quality
 from .database import (
     database_status,
     export_admin_data,
+    list_opportunities,
     list_content_versions,
     list_content_blocks,
     list_audit_events,
@@ -16,6 +17,7 @@ from .database import (
     record_audit_event,
     record_provider_snapshot,
     record_telemetry_event,
+    refresh_opportunities,
     rollback_content_version,
     telemetry_summary,
     upsert_content_block,
@@ -174,6 +176,34 @@ class TelemetrySummaryResponse(BaseModel):
     events_60m: int
     top_pages: list[dict[str, Any]]
     recent_events: list[dict[str, Any]]
+
+
+class OpportunityItem(BaseModel):
+    id: str
+    source_id: str
+    category: str
+    title: str
+    summary: str
+    url: str
+    region: str
+    status: str
+    deadline: str | None
+    score: int
+    match_reasons: list[str]
+    next_action: str
+    metadata: dict[str, Any]
+    first_seen_at: str
+    last_seen_at: str
+
+
+class OpportunitiesResponse(BaseModel):
+    opportunities: list[OpportunityItem]
+
+
+class OpportunitiesRefreshResponse(BaseModel):
+    refreshed: bool
+    count: int
+    opportunities: list[OpportunityItem]
 
 
 class ContentRollbackRequest(BaseModel):
@@ -434,6 +464,37 @@ def admin_telemetry_summary(
     summary = telemetry_summary()
 
     return TelemetrySummaryResponse(**summary.__dict__)
+
+
+@app.get("/admin/opportunities", response_model=OpportunitiesResponse)
+def admin_opportunities(
+    limit: int = Query(default=12, ge=1, le=50),
+    x_fk_backend_token: str | None = Header(default=None),
+) -> OpportunitiesResponse:
+    require_backend_token(x_fk_backend_token)
+    opportunities = [
+        OpportunityItem(**opportunity.__dict__)
+        for opportunity in list_opportunities(limit=limit)
+    ]
+
+    return OpportunitiesResponse(opportunities=opportunities)
+
+
+@app.post("/admin/opportunities/refresh", response_model=OpportunitiesRefreshResponse)
+def admin_opportunities_refresh(
+    x_fk_backend_token: str | None = Header(default=None),
+) -> OpportunitiesRefreshResponse:
+    require_backend_token(x_fk_backend_token)
+    opportunities = [
+        OpportunityItem(**opportunity.__dict__)
+        for opportunity in refresh_opportunities()
+    ]
+
+    return OpportunitiesRefreshResponse(
+        refreshed=True,
+        count=len(opportunities),
+        opportunities=opportunities,
+    )
 
 
 @app.post("/admin/content/rollback", response_model=ContentBlockResponse)

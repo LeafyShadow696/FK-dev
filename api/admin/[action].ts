@@ -93,6 +93,23 @@ type TelemetrySummary = {
   }>
 }
 
+type OpportunityItem = {
+  id: string
+  sourceId: string
+  category: string
+  title: string
+  summary: string
+  url: string
+  region: string
+  status: string
+  deadline: string | null
+  score: number
+  matchReasons: string[]
+  nextAction: string
+  firstSeenAt: string
+  lastSeenAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -776,6 +793,76 @@ async function backendTelemetrySummary(): Promise<TelemetrySummary> {
   }
 }
 
+function mapOpportunity(item: any): OpportunityItem {
+  return {
+    id: String(item.id ?? ""),
+    sourceId: String(item.source_id ?? ""),
+    category: String(item.category ?? "watch"),
+    title: String(item.title ?? ""),
+    summary: String(item.summary ?? ""),
+    url: String(item.url ?? ""),
+    region: String(item.region ?? ""),
+    status: String(item.status ?? "watching"),
+    deadline: item.deadline ? String(item.deadline) : null,
+    score: Number(item.score ?? 0),
+    matchReasons: Array.isArray(item.match_reasons)
+      ? item.match_reasons.map((reason: unknown) => String(reason))
+      : [],
+    nextAction: String(item.next_action ?? ""),
+    firstSeenAt: String(item.first_seen_at ?? ""),
+    lastSeenAt: String(item.last_seen_at ?? ""),
+  }
+}
+
+async function backendOpportunities(): Promise<OpportunityItem[]> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return []
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/opportunities?limit=12`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.opportunities)) {
+      return []
+    }
+
+    return response.data.opportunities.map(mapOpportunity)
+  } catch {
+    return []
+  }
+}
+
+async function refreshBackendOpportunities() {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(`${backendUrl.replace(/\/$/, "")}/admin/opportunities/refresh`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-FK-Backend-Token": backendToken,
+    },
+  })
+}
+
 async function saveBackendContentBlock(input: {
   key: string
   label: string
@@ -1164,6 +1251,42 @@ export default async function handler(req: any, res: any) {
     return
   }
 
+  if (action === "opportunities-refresh") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const refreshed = await refreshBackendOpportunities()
+
+    if (!refreshed.ok) {
+      sendJson(res, refreshed.status || 502, {
+        message: "Nepodařilo se obnovit radar příležitostí.",
+      })
+      return
+    }
+
+    sendJson(res, 200, {
+      refreshed: true,
+      count: Number(refreshed.data?.count ?? 0),
+      opportunities: Array.isArray(refreshed.data?.opportunities)
+        ? refreshed.data.opportunities.map(mapOpportunity)
+        : [],
+    })
+    return
+  }
+
   if (action === "content-check") {
     if (req.method !== "POST") {
       sendJson(res, 405, { message: "Metoda není povolená." })
@@ -1255,12 +1378,13 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs, operations, contentState, telemetry] = await Promise.all([
+    const [providers, auditLogs, operations, contentState, telemetry, opportunities] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
       operationChecks(),
       backendContentState(),
       backendTelemetrySummary(),
+      backendOpportunities(),
     ])
     await writeProviderSnapshot(providers, operations)
     const providerSnapshots = await backendProviderSnapshots()
@@ -1281,13 +1405,14 @@ export default async function handler(req: any, res: any) {
       contentBlocks: contentState.blocks,
       contentVersions: contentState.versions,
       telemetry,
+      opportunities,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
         "Rozšířit Vercel stav o build logy a Web Analytics.",
         "Rozšířit live návštěvnost o denní/tydenní agregace.",
+        "Doplnit parsery konkrétních zakázek a dotačních výzev do Opportunity Radaru.",
         "Přidat filtr a agregace historie provozních snapshotů.",
-        "Připravit první bezpečné content snapshoty landing page.",
       ],
     })
     return

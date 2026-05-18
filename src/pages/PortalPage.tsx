@@ -94,8 +94,26 @@ type PortalOverview = {
   }
   contentBlocks?: Array<ContentBlock>
   contentVersions?: Array<ContentVersion>
+  opportunities?: Array<OpportunityItem>
   configuredIntegrations: number
   checklist: string[]
+}
+
+type OpportunityItem = {
+  id: string
+  sourceId: string
+  category: string
+  title: string
+  summary: string
+  url: string
+  region: string
+  status: string
+  deadline: string | null
+  score: number
+  matchReasons: string[]
+  nextAction: string
+  firstSeenAt: string
+  lastSeenAt: string
 }
 
 type ContentBlock = {
@@ -400,6 +418,11 @@ function PortalDashboard({
   const [contentVersions, setContentVersions] = useState<ContentVersion[]>(
     () => overview.contentVersions ?? [],
   )
+  const [opportunities, setOpportunities] = useState<OpportunityItem[]>(
+    () => overview.opportunities ?? [],
+  )
+  const [refreshingOpportunities, setRefreshingOpportunities] = useState(false)
+  const [opportunityMessage, setOpportunityMessage] = useState("")
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
@@ -466,6 +489,55 @@ function PortalDashboard({
 
   function snapshotStatusLabel(status: string) {
     return status === "ok" ? "Stabilní" : "Zhoršený stav"
+  }
+
+  function opportunityCategoryLabel(category: string) {
+    if (category === "grant") {
+      return "Dotace"
+    }
+
+    if (category === "public_procurement") {
+      return "Zakázky"
+    }
+
+    if (category === "market_signal") {
+      return "Tržní signál"
+    }
+
+    if (category === "eu_call") {
+      return "EU výzva"
+    }
+
+    return "Sledování"
+  }
+
+  async function refreshOpportunities() {
+    setRefreshingOpportunities(true)
+    setOpportunityMessage("")
+
+    try {
+      const response = await fetch("/api/admin/opportunities-refresh", {
+        method: "POST",
+        credentials: "include",
+      })
+      const data = await readJson<{
+        opportunities?: OpportunityItem[]
+        count?: number
+        message?: string
+      }>(response)
+
+      if (!response.ok || !Array.isArray(data.opportunities)) {
+        setOpportunityMessage(data.message ?? "Radar se nepodařilo obnovit.")
+        return
+      }
+
+      setOpportunities(data.opportunities)
+      setOpportunityMessage(`Radar obnoven: ${data.count ?? data.opportunities.length} zdrojů.`)
+    } catch {
+      setOpportunityMessage("Radar teď není dostupný. Zkuste to znovu.")
+    } finally {
+      setRefreshingOpportunities(false)
+    }
   }
 
   const filteredAuditLogs = useMemo(() => {
@@ -854,6 +926,105 @@ function PortalDashboard({
                 )}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Globe2 className="h-5 w-5 text-foreground/90" aria-hidden />
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  Opportunity Radar
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Sledování zakázek, dotačních zdrojů a tržních signálů podle profilu FKdev.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void refreshOpportunities()}
+              disabled={refreshingOpportunities}
+            >
+              {refreshingOpportunities ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <RotateCcw className="h-4 w-4" aria-hidden />
+              )}
+              Obnovit radar
+            </Button>
+          </div>
+
+          {opportunityMessage ? (
+            <p className="mt-4 rounded-[var(--radius)] border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
+              {opportunityMessage}
+            </p>
+          ) : null}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {opportunities.length > 0 ? (
+              opportunities.map((item) => (
+                <article
+                  key={item.id || item.sourceId}
+                  className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {opportunityCategoryLabel(item.category)} · {item.region}
+                      </p>
+                      <h3 className="mt-2 font-display text-base font-semibold text-foreground">
+                        {item.title}
+                      </h3>
+                    </div>
+                    <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                      skóre {item.score}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {item.summary}
+                  </p>
+                  {item.matchReasons.length > 0 ? (
+                    <div className="mt-4 grid gap-2">
+                      {item.matchReasons.slice(0, 2).map((reason) => (
+                        <div
+                          key={reason}
+                          className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
+                        >
+                          <CheckCircle2
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/90"
+                            aria-hidden
+                          />
+                          {reason}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <p className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3 text-sm leading-relaxed text-muted-foreground">
+                    {item.nextAction}
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Aktualizováno {formatAuditDate(item.lastSeenAt)}
+                    </span>
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      Otevřít zdroj
+                    </a>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4 text-sm leading-relaxed text-muted-foreground lg:col-span-2">
+                Radar je připravený. Spusťte první obnovu, aby se založily sledované zdroje.
+              </div>
+            )}
           </div>
         </section>
 
