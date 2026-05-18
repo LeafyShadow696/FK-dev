@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  Download,
   Eye,
   FileText,
   GitPullRequest,
@@ -20,6 +21,7 @@ import {
   ShieldCheck,
   RotateCcw,
   Save,
+  Search,
   Trash2,
   Wifi,
 } from "lucide-react"
@@ -454,6 +456,11 @@ function PortalDashboard({
   const [savingOpportunityWorkflow, setSavingOpportunityWorkflow] = useState(false)
   const [refreshingOpportunities, setRefreshingOpportunities] = useState(false)
   const [opportunityMessage, setOpportunityMessage] = useState("")
+  const [opportunitySearch, setOpportunitySearch] = useState("")
+  const [opportunityWorkflowFilter, setOpportunityWorkflowFilter] = useState("all")
+  const [opportunityCategoryFilter, setOpportunityCategoryFilter] = useState("all")
+  const [opportunitySourceFilter, setOpportunitySourceFilter] = useState("all")
+  const [opportunityDeadlineFilter, setOpportunityDeadlineFilter] = useState("all")
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
@@ -572,6 +579,15 @@ function PortalDashboard({
     }
 
     return "Zdroj"
+  }
+
+  function opportunitySourceKey(item: OpportunityItem) {
+    return String(item.metadata.source_type ?? "curated_watch")
+  }
+
+  function csvCell(value: string | number | null | undefined) {
+    const text = String(value ?? "")
+    return `"${text.replace(/"/g, '""')}"`
   }
 
   function statusLabel(ok: boolean) {
@@ -760,6 +776,46 @@ function PortalDashboard({
     )
   }
 
+  function exportFilteredOpportunities() {
+    const rows = filteredOpportunities.map((item) => [
+      item.title,
+      opportunityCategoryLabel(item.category),
+      opportunityWorkflowLabel(item.workflowStatus),
+      opportunitySourceLabel(item.metadata),
+      item.region,
+      item.score,
+      item.deadline ? formatOpportunityDeadline(item.deadline) : "",
+      item.status,
+      item.nextAction,
+      item.url,
+    ])
+    const header = [
+      "Nazev",
+      "Kategorie",
+      "Workflow",
+      "Zdroj",
+      "Region",
+      "Skore",
+      "Deadline",
+      "Stav zdroje",
+      "Dalsi krok",
+      "URL",
+    ]
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => csvCell(cell)).join(","))
+      .join("\r\n")
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `fkdev-opportunity-radar-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    setOpportunityMessage(`Exportováno ${filteredOpportunities.length} položek do CSV.`)
+  }
+
   async function saveOpportunityWorkflow() {
     if (!selectedOpportunity) {
       return
@@ -837,15 +893,96 @@ function PortalDashboard({
         .slice(0, snapshotLimit),
     [providerSnapshots, snapshotLimit, snapshotStatus],
   )
+
+  const opportunityCategories = useMemo(
+    () => Array.from(new Set(opportunities.map((item) => item.category))).sort(),
+    [opportunities],
+  )
+  const opportunitySources = useMemo(
+    () => Array.from(new Set(opportunities.map((item) => opportunitySourceKey(item)))).sort(),
+    [opportunities],
+  )
+  const filteredOpportunities = useMemo(() => {
+    const normalized = opportunitySearch.trim().toLowerCase()
+    const now = Date.now()
+    const inSevenDays = now + 7 * 24 * 60 * 60 * 1000
+
+    return opportunities.filter((item) => {
+      if (
+        opportunityWorkflowFilter !== "all" &&
+        item.workflowStatus !== opportunityWorkflowFilter
+      ) {
+        return false
+      }
+
+      if (
+        opportunityCategoryFilter !== "all" &&
+        item.category !== opportunityCategoryFilter
+      ) {
+        return false
+      }
+
+      if (
+        opportunitySourceFilter !== "all" &&
+        opportunitySourceKey(item) !== opportunitySourceFilter
+      ) {
+        return false
+      }
+
+      if (opportunityDeadlineFilter !== "all") {
+        const deadline = item.deadline ? new Date(item.deadline).getTime() : NaN
+
+        if (opportunityDeadlineFilter === "due7") {
+          if (Number.isNaN(deadline) || deadline < now || deadline > inSevenDays) {
+            return false
+          }
+        } else if (opportunityDeadlineFilter === "expired") {
+          if (Number.isNaN(deadline) || deadline >= now) {
+            return false
+          }
+        } else if (opportunityDeadlineFilter === "no_deadline" && item.deadline) {
+          return false
+        }
+      }
+
+      if (!normalized) {
+        return true
+      }
+
+      return [
+        item.title,
+        item.summary,
+        item.region,
+        item.status,
+        item.nextAction,
+        item.matchReasons.join(" "),
+        summarizeMetadata(item.metadata),
+        opportunityCategoryLabel(item.category),
+        opportunityWorkflowLabel(item.workflowStatus),
+        opportunitySourceLabel(item.metadata),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized)
+    })
+  }, [
+    opportunities,
+    opportunityCategoryFilter,
+    opportunityDeadlineFilter,
+    opportunitySearch,
+    opportunitySourceFilter,
+    opportunityWorkflowFilter,
+  ])
+
   const opportunityStats = useMemo(() => {
     const now = Date.now()
     const inSevenDays = now + 7 * 24 * 60 * 60 * 1000
 
     return {
-      newItems: opportunities.filter((item) => item.workflowStatus === "new").length,
-      toVerify: opportunities.filter((item) => item.workflowStatus === "verify").length,
-      goodFit: opportunities.filter((item) => item.workflowStatus === "good_fit").length,
-      dueSoon: opportunities.filter((item) => {
+      newItems: filteredOpportunities.filter((item) => item.workflowStatus === "new").length,
+      toVerify: filteredOpportunities.filter((item) => item.workflowStatus === "verify").length,
+      goodFit: filteredOpportunities.filter((item) => item.workflowStatus === "good_fit").length,
+      dueSoon: filteredOpportunities.filter((item) => {
         if (!item.deadline) {
           return false
         }
@@ -854,7 +991,7 @@ function PortalDashboard({
         return !Number.isNaN(deadline) && deadline >= now && deadline <= inSevenDays
       }).length,
     }
-  }, [opportunities])
+  }, [filteredOpportunities])
 
   function selectContentBlock(key: string) {
     const next = contentBlocks.find((block) => block.key === key)
@@ -1226,19 +1363,30 @@ function PortalDashboard({
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void refreshOpportunities()}
-              disabled={refreshingOpportunities}
-            >
-              {refreshingOpportunities ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <RotateCcw className="h-4 w-4" aria-hidden />
-              )}
-              Obnovit radar
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={exportFilteredOpportunities}
+                disabled={filteredOpportunities.length === 0}
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                Export CSV
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void refreshOpportunities()}
+                disabled={refreshingOpportunities}
+              >
+                {refreshingOpportunities ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                )}
+                Obnovit radar
+              </Button>
+            </div>
           </div>
 
           {opportunityMessage ? (
@@ -1266,9 +1414,111 @@ function PortalDashboard({
             ))}
           </div>
 
+          <div className="mt-5 grid gap-3 lg:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
+            <label className="grid gap-2 text-sm text-muted-foreground">
+              Hledat
+              <span className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={opportunitySearch}
+                  onChange={(event) => setOpportunitySearch(event.target.value)}
+                  className="w-full rounded-lg border border-border/70 bg-background/50 py-2 pl-9 pr-3 text-sm text-foreground outline-none focus:border-foreground/50"
+                  placeholder="Název, region, zdroj..."
+                />
+              </span>
+            </label>
+            <label className="grid gap-2 text-sm text-muted-foreground">
+              Workflow
+              <select
+                value={opportunityWorkflowFilter}
+                onChange={(event) => setOpportunityWorkflowFilter(event.target.value)}
+                className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+              >
+                <option value="all">Vše</option>
+                {["new", "verify", "good_fit", "not_fit", "in_progress", "submitted"].map((status) => (
+                  <option key={status} value={status}>
+                    {opportunityWorkflowLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-muted-foreground">
+              Kategorie
+              <select
+                value={opportunityCategoryFilter}
+                onChange={(event) => setOpportunityCategoryFilter(event.target.value)}
+                className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+              >
+                <option value="all">Vše</option>
+                {opportunityCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {opportunityCategoryLabel(category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-muted-foreground">
+              Zdroj
+              <select
+                value={opportunitySourceFilter}
+                onChange={(event) => setOpportunitySourceFilter(event.target.value)}
+                className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+              >
+                <option value="all">Vše</option>
+                {opportunitySources.map((source) => {
+                  const example = opportunities.find(
+                    (item) => opportunitySourceKey(item) === source,
+                  )
+
+                  return (
+                    <option key={source} value={source}>
+                      {example ? opportunitySourceLabel(example.metadata) : source}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-muted-foreground">
+              Deadline
+              <select
+                value={opportunityDeadlineFilter}
+                onChange={(event) => setOpportunityDeadlineFilter(event.target.value)}
+                className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+              >
+                <option value="all">Vše</option>
+                <option value="due7">Do 7 dnů</option>
+                <option value="expired">Po termínu</option>
+                <option value="no_deadline">Bez termínu</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>
+              Zobrazeno {filteredOpportunities.length} / {opportunities.length} položek
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setOpportunitySearch("")
+                setOpportunityWorkflowFilter("all")
+                setOpportunityCategoryFilter("all")
+                setOpportunitySourceFilter("all")
+                setOpportunityDeadlineFilter("all")
+              }}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Vyčistit filtry
+            </button>
+          </div>
+
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {opportunities.length > 0 ? (
-              opportunities.map((item) => (
+            {filteredOpportunities.length > 0 ? (
+              filteredOpportunities.map((item) => (
                 <article
                   key={item.id || item.sourceId}
                   className={`rounded-[var(--radius)] border p-4 ${
@@ -1360,7 +1610,9 @@ function PortalDashboard({
               ))
             ) : (
               <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4 text-sm leading-relaxed text-muted-foreground lg:col-span-2">
-                Radar je připravený. Spusťte první obnovu, aby se založily sledované zdroje.
+                {opportunities.length > 0
+                  ? "Aktuální filtry neodpovídají žádné položce."
+                  : "Radar je připravený. Spusťte první obnovu, aby se založily sledované zdroje."}
               </div>
             )}
           </div>
