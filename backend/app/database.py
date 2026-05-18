@@ -1070,6 +1070,7 @@ def _api_grant_opportunities_from_html(
         parsed_deadline = _parse_cz_datetime(deadline) if deadline else None
         if parsed_deadline and parsed_deadline < datetime.now(UTC):
             continue
+        normalized_deadline = parsed_deadline.isoformat() if parsed_deadline else deadline
 
         score = 74
         reasons = ["Importovaná dotační výzva z oficiálního přehledu API / OP TAK."]
@@ -1092,7 +1093,7 @@ def _api_grant_opportunities_from_html(
                 "url": href,
                 "region": "ČR mimo Prahu podle podmínek výzvy",
                 "status": "imported",
-                "deadline": deadline,
+                "deadline": normalized_deadline,
                 "keywords": keywords,
                 "score": min(score, 100),
                 "match_reasons": reasons,
@@ -1101,6 +1102,7 @@ def _api_grant_opportunities_from_html(
                     "source_type": "api_optak_import",
                     "raw_source": source_url,
                     "imported_at": imported_at,
+                    "deadline_label": deadline,
                     "context": context[:600],
                 },
             },

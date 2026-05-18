@@ -459,6 +459,19 @@ function PortalDashboard({
     }).format(date)
   }
 
+  function formatOpportunityDeadline(value: string) {
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+      return value
+    }
+
+    return new Intl.DateTimeFormat("cs-CZ", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date)
+  }
+
   function summarizeMetadata(metadata: Record<string, unknown>) {
     const entries = Object.entries(metadata).filter(
       ([key, value]) =>
@@ -1031,7 +1044,7 @@ function PortalDashboard({
                     {item.deadline ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-border/50 px-2.5 py-1">
                         <Clock3 className="h-3 w-3" aria-hidden />
-                        termín {item.deadline}
+                        termín {formatOpportunityDeadline(item.deadline)}
                       </span>
                     ) : null}
                     <span className="rounded-full border border-border/50 px-2.5 py-1">
