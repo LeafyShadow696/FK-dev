@@ -294,8 +294,9 @@ function PortalLogin({
   const [submitting, setSubmitting] = useState(false)
 
   async function loadOverview() {
-    const response = await fetch("/api/admin/overview", {
+    const response = await fetch(`/api/admin/overview?ts=${Date.now()}`, {
       credentials: "include",
+      cache: "no-store",
     })
 
     if (!isJsonResponse(response)) {
@@ -485,6 +486,22 @@ function PortalDashboard({
   const selectedOpportunity =
     opportunities.find((item) => item.id === selectedOpportunityId) ??
     opportunities[0]
+
+  useEffect(() => {
+    const nextOpportunities = overview.opportunities ?? []
+    setOpportunities(nextOpportunities)
+
+    if (nextOpportunities.length === 0) {
+      setSelectedOpportunityId("")
+      return
+    }
+
+    setSelectedOpportunityId((current) =>
+      nextOpportunities.some((item) => item.id === current)
+        ? current
+        : nextOpportunities[0].id,
+    )
+  }, [overview.opportunities])
 
   useEffect(() => {
     if (!selectedOpportunity && opportunities[0]) {
@@ -2383,8 +2400,9 @@ export default function PortalPage() {
   const [overview, setOverview] = useState<PortalOverview | null>(null)
 
   async function loadOverview() {
-    const response = await fetch("/api/admin/overview", {
+    const response = await fetch(`/api/admin/overview?ts=${Date.now()}`, {
       credentials: "include",
+      cache: "no-store",
     })
 
     if (!isJsonResponse(response)) {
