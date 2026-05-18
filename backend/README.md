@@ -56,7 +56,9 @@ Backup note: Render Postgres is currently on a free plan. See
 `docs/admin-data-backups.md` for the scheduled export workflow and the current
 database expiry date.
 
-Opportunity radar note: MPSV live import first tries small daily increment JSON
-sources. The large full dataset is intentionally disabled by default for Render
+Opportunity radar note: live import checks guarded MPSV sources, parses the
+official API / OP TAK call overview for matching open grant calls, and keeps a
+NEN public-procurement status item until a stable CPV/NIPEZ query is wired in.
+The large MPSV full dataset is intentionally disabled by default for Render
 runtime safety; enable `FK_OPPORTUNITY_ENABLE_MPSV_FULL_IMPORT=true` only when
 the service has enough time and memory budget.

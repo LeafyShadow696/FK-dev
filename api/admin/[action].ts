@@ -106,6 +106,7 @@ type OpportunityItem = {
   score: number
   matchReasons: string[]
   nextAction: string
+  metadata: Record<string, unknown>
   firstSeenAt: string
   lastSeenAt: string
 }
@@ -809,6 +810,10 @@ function mapOpportunity(item: any): OpportunityItem {
       ? item.match_reasons.map((reason: unknown) => String(reason))
       : [],
     nextAction: String(item.next_action ?? ""),
+    metadata:
+      item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+        ? item.metadata
+        : {},
     firstSeenAt: String(item.first_seen_at ?? ""),
     lastSeenAt: String(item.last_seen_at ?? ""),
   }

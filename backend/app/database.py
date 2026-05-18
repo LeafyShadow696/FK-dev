@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import json
 import os
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from html import unescape
 from typing import Any
+from urllib.parse import urljoin
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -746,6 +749,8 @@ OPPORTUNITY_IMPORT_LIMIT = 8
 OPPORTUNITY_FETCH_TIMEOUT_SECONDS = 12
 OPPORTUNITY_RESPONSE_LIMIT_BYTES = 8_000_000
 MPSV_FULL_DATASET_URL = "https://data.mpsv.cz/od/soubory/volna-mista/volna-mista.json"
+API_OP_TAK_CALLS_URL = "https://apiagentura.gov.cz/cs/radce/vsechny-vyzvy/"
+NEN_PUBLIC_PROCUREMENT_URL = "https://portal-vz.cz/nipez/nen-2/"
 
 MPSV_IT_KEYWORDS = [
     "automatizace",
@@ -780,6 +785,30 @@ MPSV_REGION_KEYWORDS = [
     "vysočina",
     "zdar nad sazavou",
     "žďár nad sázavou",
+]
+GRANT_KEYWORDS = [
+    "aplikace",
+    "automatizace",
+    "data",
+    "digital",
+    "digitální",
+    "inovační voucher",
+    "inovace",
+    "poradenství",
+    "software",
+    "technologie",
+    "vysokorychlostní internet",
+]
+TENDER_KEYWORDS = [
+    "api",
+    "automatizace",
+    "data",
+    "digitalizace",
+    "informační systém",
+    "it služby",
+    "portál",
+    "software",
+    "web",
 ]
 
 
@@ -848,6 +877,62 @@ def _read_url_json(
         raise ValueError("Opportunity source did not return JSON payload")
 
     return json.loads(text_value)
+
+
+def _read_url_text(
+    url: str,
+    *,
+    max_bytes: int = OPPORTUNITY_RESPONSE_LIMIT_BYTES,
+    timeout: int = OPPORTUNITY_FETCH_TIMEOUT_SECONDS,
+) -> str:
+    request = Request(url, headers={"User-Agent": "fkdev-opportunity-radar/1.0"})
+    with urlopen(request, timeout=timeout) as response:
+        raw = response.read(max_bytes + 1)
+
+    if len(raw) > max_bytes:
+        raise ValueError(f"Opportunity source response exceeded {max_bytes} bytes")
+
+    return raw.decode("utf-8", errors="replace")
+
+
+def _plain_text_from_html(html: str) -> str:
+    without_scripts = re.sub(r"(?is)<(script|style).*?</\1>", " ", html)
+    without_tags = re.sub(r"(?s)<[^>]+>", " ", without_scripts)
+    return re.sub(r"\s+", " ", unescape(without_tags)).strip()
+
+
+def _html_links(html: str, base_url: str) -> list[tuple[str, str]]:
+    links: list[tuple[str, str]] = []
+    for match in re.finditer(r'(?is)<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', html):
+        href = urljoin(base_url, unescape(match.group(1)))
+        label = _plain_text_from_html(match.group(2))
+        if label:
+            links.append((label, href))
+    return links
+
+
+def _deadline_from_text(text_value: str) -> str | None:
+    matches = re.findall(r"\b\d{1,2}\.\s*\d{1,2}\.\s*\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?", text_value)
+    if not matches:
+        return None
+
+    parsed = [(_parse_cz_datetime(match), match) for match in matches]
+    parsed_dates = [(date_value, match) for date_value, match in parsed if date_value is not None]
+    if not parsed_dates:
+        return matches[-1]
+
+    return max(parsed_dates, key=lambda item: item[0])[1]
+
+
+def _parse_cz_datetime(value: str) -> datetime | None:
+    normalized = re.sub(r"\s+", " ", value.strip())
+    for fmt in ("%d. %m. %Y %H:%M:%S", "%d. %m. %Y %H:%M", "%d. %m. %Y"):
+        try:
+            return datetime.strptime(normalized, fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+
+    return None
 
 
 def _mpsv_candidate_urls(now: datetime) -> list[str]:
@@ -949,6 +1034,183 @@ def _mpsv_opportunities_from_payload(
     return opportunities
 
 
+def _api_grant_opportunities_from_html(
+    html: str,
+    *,
+    source_url: str,
+    imported_at: str,
+) -> list[dict[str, Any]]:
+    closed_marker = re.search(r"(?i)Uzavřené\s+výzvy", html)
+    if closed_marker:
+        html = html[: closed_marker.start()]
+
+    plain_text = _plain_text_from_html(html)
+    opportunities: list[dict[str, Any]] = []
+
+    for title, href in _html_links(html, source_url):
+        if len(title) < 12:
+            continue
+
+        title_search = _normalize_search_text(title)
+        matched = [keyword for keyword in GRANT_KEYWORDS if _normalize_search_text(keyword) in title_search]
+        if not matched:
+            continue
+
+        title_position = plain_text.find(title)
+        context = plain_text[max(0, title_position - 180) : title_position + len(title) + 260] if title_position >= 0 else title
+        if not _deadline_from_text(context):
+            continue
+
+        context_search = _normalize_search_text(context)
+        matched_context = [
+            keyword for keyword in GRANT_KEYWORDS if _normalize_search_text(keyword) in context_search
+        ]
+        keywords = sorted(set(matched + matched_context))
+        deadline = _deadline_from_text(context)
+        parsed_deadline = _parse_cz_datetime(deadline) if deadline else None
+        if parsed_deadline and parsed_deadline < datetime.now(UTC):
+            continue
+
+        score = 74
+        reasons = ["Importovaná dotační výzva z oficiálního přehledu API / OP TAK."]
+        if any(_normalize_search_text(keyword) in title_search for keyword in ("digital", "digitální", "software")):
+            score += 14
+            reasons.append("Název výzvy přímo míří na digitalizaci, software nebo digitální technologie.")
+        if deadline:
+            score += 6
+            reasons.append("Výzva má dohledatelný termín ukončení příjmu.")
+
+        opportunities.append(
+            {
+                "source_id": _stable_source_id("api-optak", title, href, deadline),
+                "category": "grant",
+                "title": title[:180],
+                "summary": (
+                    "Oficiální přehled výzev OP TAK obsahuje titul odpovídající tématům "
+                    "digitalizace, technologií, inovací, poradenství nebo softwaru."
+                ),
+                "url": href,
+                "region": "ČR mimo Prahu podle podmínek výzvy",
+                "status": "imported",
+                "deadline": deadline,
+                "keywords": keywords,
+                "score": min(score, 100),
+                "match_reasons": reasons,
+                "next_action": "Otevřít detail výzvy, ověřit oprávněnost podle IČO, sídla, velikosti podniku, CZ-NACE a požadovaných příloh.",
+                "metadata": {
+                    "source_type": "api_optak_import",
+                    "raw_source": source_url,
+                    "imported_at": imported_at,
+                    "context": context[:600],
+                },
+            },
+        )
+
+        if len(opportunities) >= OPPORTUNITY_IMPORT_LIMIT:
+            break
+
+    return opportunities
+
+
+def import_api_grant_opportunities(now: datetime) -> list[dict[str, Any]]:
+    imported_at = now.isoformat()
+
+    try:
+        html = _read_url_text(API_OP_TAK_CALLS_URL)
+    except (OSError, URLError, TimeoutError, ValueError, UnicodeDecodeError) as error:
+        return [
+            {
+                "source_id": "api-optak-import-status",
+                "category": "grant",
+                "title": "OP TAK import: přehled výzev API se nepodařilo načíst",
+                "summary": "Radar má připravený parser oficiálního přehledu výzev API, ale poslední kontrola nevrátila použitelnou stránku.",
+                "url": API_OP_TAK_CALLS_URL,
+                "region": "ČR mimo Prahu podle podmínek výzvy",
+                "status": "watching",
+                "deadline": None,
+                "keywords": ["OP TAK", "API", "dotace", "digitalizace"],
+                "score": 57,
+                "match_reasons": ["Importní adaptér zachoval watch stav a uložil chybu zdroje do metadat."],
+                "next_action": "Zkontrolovat dostupnost API webu a případně použít ruční ověření výzev.",
+                "metadata": {
+                    "source_type": "api_optak_import_status",
+                    "raw_source": API_OP_TAK_CALLS_URL,
+                    "imported_at": imported_at,
+                    "error": str(error)[:220],
+                },
+            },
+        ]
+
+    imported = _api_grant_opportunities_from_html(
+        html,
+        source_url=API_OP_TAK_CALLS_URL,
+        imported_at=imported_at,
+    )
+    if imported:
+        return imported
+
+    return [
+        {
+            "source_id": "api-optak-import-status",
+            "category": "grant",
+            "title": "OP TAK import: bez nové digitální shody",
+            "summary": "Parser oficiálního přehledu API proběhl, ale v aktuálním HTML nenašel výzvu odpovídající nastaveným digitálním klíčovým slovům.",
+            "url": API_OP_TAK_CALLS_URL,
+            "region": "ČR mimo Prahu podle podmínek výzvy",
+            "status": "watching",
+            "deadline": None,
+            "keywords": ["OP TAK", "API", "dotace", "digitalizace"],
+            "score": 54,
+            "match_reasons": ["Zdroj byl dostupný a parser proběhl bez chyby."],
+            "next_action": "Rozšířit klíčová slova nebo ručně zkontrolovat nové výzvy v přehledu API.",
+            "metadata": {
+                "source_type": "api_optak_import_status",
+                "raw_source": API_OP_TAK_CALLS_URL,
+                "imported_at": imported_at,
+            },
+        },
+    ]
+
+
+def import_public_procurement_opportunities(now: datetime) -> list[dict[str, Any]]:
+    imported_at = now.isoformat()
+
+    try:
+        html = _read_url_text(NEN_PUBLIC_PROCUREMENT_URL)
+    except (OSError, URLError, TimeoutError, ValueError, UnicodeDecodeError) as error:
+        source_status = f"Zdroj se nepodařilo načíst: {str(error)[:160]}"
+    else:
+        source_status = "Oficiální informační stránka NEN je dostupná; konkrétní vyhledávání zakázek vyžaduje napojení na NEN veřejné API nebo parametrizované vyhledávání."
+        search_text = _normalize_search_text(_plain_text_from_html(html))
+        if any(_normalize_search_text(keyword) in search_text for keyword in TENDER_KEYWORDS):
+            source_status = "Oficiální stránka NEN je dostupná a potvrzuje veřejné zadávání zakázek v NEN; další krok je doplnit konkrétní API dotaz podle CPV/NIPEZ kódů."
+
+    return [
+        {
+            "source_id": "nen-public-procurement-import-status",
+            "category": "public_procurement",
+            "title": "NEN import: připravit konkrétní dotaz pro IT/web zakázky",
+            "summary": source_status,
+            "url": NEN_PUBLIC_PROCUREMENT_URL,
+            "region": "ČR / filtrovat Vysočina a okolní kraje",
+            "status": "watching",
+            "deadline": None,
+            "keywords": ["NEN", "veřejné zakázky", "NIPEZ", "CPV", "IT služby", "software", "web"],
+            "score": 61,
+            "match_reasons": [
+                "NEN je oficiální elektronický nástroj pro zadávání veřejných zakázek.",
+                "Pro konkrétní import je potřeba doplnit stabilní API/CPV filtr pro IT, weby a automatizaci.",
+            ],
+            "next_action": "Doplnit mapu CPV/NIPEZ kódů pro software, webové portály a IT služby, potom ukládat konkrétní otevřené zakázky s lhůtou.",
+            "metadata": {
+                "source_type": "nen_import_status",
+                "raw_source": NEN_PUBLIC_PROCUREMENT_URL,
+                "imported_at": imported_at,
+            },
+        },
+    ]
+
+
 def import_live_opportunities(now: datetime) -> list[dict[str, Any]]:
     imported_at = now.isoformat()
     imported: list[dict[str, Any]] = []
@@ -965,10 +1227,7 @@ def import_live_opportunities(now: datetime) -> list[dict[str, Any]]:
         if imported:
             break
 
-    if imported:
-        return imported[:OPPORTUNITY_IMPORT_LIMIT]
-
-    return [
+    mpsv_items = imported[:OPPORTUNITY_IMPORT_LIMIT] if imported else [
         {
             "source_id": "mpsv-live-import-status",
             "category": "market_signal",
@@ -990,6 +1249,12 @@ def import_live_opportunities(now: datetime) -> list[dict[str, Any]]:
                 "imported_at": imported_at,
             },
         },
+    ]
+
+    return [
+        *mpsv_items,
+        *import_api_grant_opportunities(now),
+        *import_public_procurement_opportunities(now),
     ]
 
 

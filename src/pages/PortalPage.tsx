@@ -112,6 +112,7 @@ type OpportunityItem = {
   score: number
   matchReasons: string[]
   nextAction: string
+  metadata: Record<string, unknown>
   firstSeenAt: string
   lastSeenAt: string
 }
@@ -459,7 +460,12 @@ function PortalDashboard({
   }
 
   function summarizeMetadata(metadata: Record<string, unknown>) {
-    const entries = Object.entries(metadata)
+    const entries = Object.entries(metadata).filter(
+      ([key, value]) =>
+        !["profile", "attempted_sources", "context"].includes(key) &&
+        value !== null &&
+        typeof value !== "object",
+    )
 
     if (entries.length === 0) {
       return "Bez doplňujících dat"
@@ -469,6 +475,36 @@ function PortalDashboard({
       .slice(0, 3)
       .map(([key, value]) => `${key}: ${String(value)}`)
       .join(" · ")
+  }
+
+  function opportunitySourceLabel(metadata: Record<string, unknown>) {
+    const sourceType = String(metadata.source_type ?? "")
+
+    if (sourceType === "api_optak_import") {
+      return "OP TAK import"
+    }
+
+    if (sourceType === "api_optak_import_status") {
+      return "OP TAK stav"
+    }
+
+    if (sourceType === "mpsv_import") {
+      return "MPSV import"
+    }
+
+    if (sourceType === "mpsv_import_status") {
+      return "MPSV stav"
+    }
+
+    if (sourceType === "nen_import_status") {
+      return "NEN stav"
+    }
+
+    if (sourceType === "curated_watch") {
+      return "Watchlist"
+    }
+
+    return "Zdroj"
   }
 
   function statusLabel(ok: boolean) {
@@ -979,8 +1015,27 @@ function PortalDashboard({
                         {item.title}
                       </h3>
                     </div>
-                    <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
-                      skóre {item.score}
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                        {opportunitySourceLabel(item.metadata)}
+                      </span>
+                      <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                        skóre {item.score}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border border-border/50 px-2.5 py-1">
+                      stav {item.status}
+                    </span>
+                    {item.deadline ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border/50 px-2.5 py-1">
+                        <Clock3 className="h-3 w-3" aria-hidden />
+                        termín {item.deadline}
+                      </span>
+                    ) : null}
+                    <span className="rounded-full border border-border/50 px-2.5 py-1">
+                      {summarizeMetadata(item.metadata)}
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -988,7 +1043,7 @@ function PortalDashboard({
                   </p>
                   {item.matchReasons.length > 0 ? (
                     <div className="mt-4 grid gap-2">
-                      {item.matchReasons.slice(0, 2).map((reason) => (
+                      {item.matchReasons.slice(0, 4).map((reason) => (
                         <div
                           key={reason}
                           className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
