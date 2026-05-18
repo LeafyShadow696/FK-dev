@@ -215,6 +215,41 @@ function isJsonResponse(response: Response) {
   return response.headers.get("content-type")?.includes("application/json")
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function fetchPortalOverview() {
+  let lastData: PortalOverview | null = null
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(`/api/admin/overview?ts=${Date.now()}-${attempt}`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+
+    if (!isJsonResponse(response)) {
+      throw new Error("Admin API nevrátilo JSON odpověď.")
+    }
+
+    const data = await readJson<PortalOverview>(response)
+
+    if (!response.ok) {
+      throw new Error("Přihlášení vypršelo nebo portál není připravený.")
+    }
+
+    lastData = data
+
+    if ((data.opportunities?.length ?? 0) > 0 || attempt === 2) {
+      return data
+    }
+
+    await delay(700)
+  }
+
+  return lastData as PortalOverview
+}
+
 function IntegrationCard({
   id,
   label,
@@ -294,22 +329,7 @@ function PortalLogin({
   const [submitting, setSubmitting] = useState(false)
 
   async function loadOverview() {
-    const response = await fetch(`/api/admin/overview?ts=${Date.now()}`, {
-      credentials: "include",
-      cache: "no-store",
-    })
-
-    if (!isJsonResponse(response)) {
-      throw new Error("Admin API nevrátilo JSON odpověď.")
-    }
-
-    const data = await readJson<PortalOverview>(response)
-
-    if (!response.ok) {
-      throw new Error("Nepodařilo se načíst přehled portálu.")
-    }
-
-    onAuthenticated(data)
+    onAuthenticated(await fetchPortalOverview())
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -2400,21 +2420,7 @@ export default function PortalPage() {
   const [overview, setOverview] = useState<PortalOverview | null>(null)
 
   async function loadOverview() {
-    const response = await fetch(`/api/admin/overview?ts=${Date.now()}`, {
-      credentials: "include",
-      cache: "no-store",
-    })
-
-    if (!isJsonResponse(response)) {
-      throw new Error("Admin API nevrátilo JSON odpověď.")
-    }
-
-    const data = await readJson<PortalOverview>(response)
-
-    if (!response.ok) {
-      throw new Error("Přihlášení vypršelo nebo portál není připravený.")
-    }
-
+    const data = await fetchPortalOverview()
     setOverview(data)
     setState("authenticated")
   }
