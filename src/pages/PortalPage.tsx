@@ -75,6 +75,23 @@ type PortalOverview = {
     payload: Record<string, unknown>
     createdAt: string
   }>
+  telemetry?: {
+    activeSessions: number
+    events15m: number
+    events60m: number
+    topPages: Array<{
+      path: string
+      visits: number
+      lastSeenAt: string
+    }>
+    recentEvents: Array<{
+      eventType: string
+      path: string
+      referrer: string | null
+      viewport: string | null
+      createdAt: string
+    }>
+  }
   contentBlocks?: Array<ContentBlock>
   contentVersions?: Array<ContentVersion>
   configuredIntegrations: number
@@ -388,6 +405,13 @@ function PortalDashboard({
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
   const providerSnapshots = overview.providerSnapshots ?? []
+  const telemetry = overview.telemetry ?? {
+    activeSessions: 0,
+    events15m: 0,
+    events60m: 0,
+    topPages: [],
+    recentEvents: [],
+  }
   const selectedContent =
     contentBlocks.find((block) => block.key === selectedContentKey) ??
     contentBlocks[0]
@@ -727,6 +751,111 @@ function PortalDashboard({
             </p>
           </article>
         </div>
+
+        <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Activity className="h-5 w-5 text-foreground/90" aria-hidden />
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  Live návštěvnost
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Anonymní agregace návštěv po souhlasu s analytikou.
+                </p>
+              </div>
+            </div>
+            <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+              posledních 60 minut
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <article className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Aktivní sessions</p>
+              <p className="mt-3 text-2xl font-semibold text-foreground">
+                {telemetry.activeSessions}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">posledních 5 minut</p>
+            </article>
+            <article className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Události</p>
+              <p className="mt-3 text-2xl font-semibold text-foreground">
+                {telemetry.events15m}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">posledních 15 minut</p>
+            </article>
+            <article className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <p className="text-sm text-muted-foreground">Pageviews</p>
+              <p className="mt-3 text-2xl font-semibold text-foreground">
+                {telemetry.events60m}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">posledních 60 minut</p>
+            </article>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <h3 className="font-display text-base font-semibold text-foreground">
+                Nejživější stránky
+              </h3>
+              <div className="mt-4 grid gap-3">
+                {telemetry.topPages.length > 0 ? (
+                  telemetry.topPages.map((page) => (
+                    <div
+                      key={`${page.path}-${page.lastSeenAt}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-background/25 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0 truncate text-foreground">
+                        {page.path}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {page.visits}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Data se zobrazí po prvních návštěvách se souhlasem analytiky.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/30 p-4">
+              <h3 className="font-display text-base font-semibold text-foreground">
+                Poslední signály
+              </h3>
+              <div className="mt-4 grid gap-3">
+                {telemetry.recentEvents.length > 0 ? (
+                  telemetry.recentEvents.slice(0, 6).map((event) => (
+                    <div
+                      key={`${event.path}-${event.createdAt}`}
+                      className="rounded-lg border border-border/50 bg-background/25 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="min-w-0 truncate text-foreground">
+                          {event.path}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {formatAuditDate(event.createdAt)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {event.viewport ?? "bez viewportu"}
+                        {event.referrer ? ` · ${event.referrer}` : ""}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Zatím nejsou uložené žádné anonymní telemetry eventy.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {selectedContent ? (
           <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">

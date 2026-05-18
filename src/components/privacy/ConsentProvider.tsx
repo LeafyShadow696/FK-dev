@@ -224,7 +224,7 @@ function ConsentDialog({ onClose }: ConsentDialogProps) {
           />
           <ConsentOption
             title="Analytika"
-            description="Povolí anonymní měření návštěvnosti a výkonu přes Vercel Analytics a Speed Insights."
+            description="Povolí anonymní měření návštěvnosti a výkonu přes Vercel Analytics, Speed Insights a interní agregaci návštěv."
             checked={preferences.analytics}
             onChange={(checked) =>
               setPreferences((current) => ({ ...current, analytics: checked }))

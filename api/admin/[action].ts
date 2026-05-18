@@ -75,6 +75,24 @@ type ContentQuality = {
   }>
 }
 
+type TelemetrySummary = {
+  activeSessions: number
+  events15m: number
+  events60m: number
+  topPages: Array<{
+    path: string
+    visits: number
+    lastSeenAt: string
+  }>
+  recentEvents: Array<{
+    eventType: string
+    path: string
+    referrer: string | null
+    viewport: string | null
+    createdAt: string
+  }>
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -698,6 +716,66 @@ async function backendContentState(): Promise<{
   }
 }
 
+async function backendTelemetrySummary(): Promise<TelemetrySummary> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+  const emptySummary = {
+    activeSessions: 0,
+    events15m: 0,
+    events60m: 0,
+    topPages: [],
+    recentEvents: [],
+  }
+
+  if (!backendToken) {
+    return emptySummary
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/telemetry/summary`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !response.data) {
+      return emptySummary
+    }
+
+    const topPages = Array.isArray(response.data.top_pages)
+      ? response.data.top_pages.map((page: any) => ({
+          path: String(page.path ?? "/"),
+          visits: Number(page.visits ?? 0),
+          lastSeenAt: String(page.last_seen_at ?? ""),
+        }))
+      : []
+    const recentEvents = Array.isArray(response.data.recent_events)
+      ? response.data.recent_events.map((event: any) => ({
+          eventType: String(event.event_type ?? "page_view"),
+          path: String(event.path ?? "/"),
+          referrer: event.referrer ? String(event.referrer) : null,
+          viewport: event.viewport ? String(event.viewport) : null,
+          createdAt: String(event.created_at ?? ""),
+        }))
+      : []
+
+    return {
+      activeSessions: Number(response.data.active_sessions ?? 0),
+      events15m: Number(response.data.events_15m ?? 0),
+      events60m: Number(response.data.events_60m ?? 0),
+      topPages,
+      recentEvents,
+    }
+  } catch {
+    return emptySummary
+  }
+}
+
 async function saveBackendContentBlock(input: {
   key: string
   label: string
@@ -1177,11 +1255,12 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs, operations, contentState] = await Promise.all([
+    const [providers, auditLogs, operations, contentState, telemetry] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
       operationChecks(),
       backendContentState(),
+      backendTelemetrySummary(),
     ])
     await writeProviderSnapshot(providers, operations)
     const providerSnapshots = await backendProviderSnapshots()
@@ -1201,11 +1280,12 @@ export default async function handler(req: any, res: any) {
       providerSnapshots,
       contentBlocks: contentState.blocks,
       contentVersions: contentState.versions,
+      telemetry,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
         "Rozšířit Vercel stav o build logy a Web Analytics.",
-        "Doplnit filtr a stránkování audit logu.",
+        "Rozšířit live návštěvnost o denní/tydenní agregace.",
         "Přidat filtr a agregace historie provozních snapshotů.",
         "Připravit první bezpečné content snapshoty landing page.",
       ],

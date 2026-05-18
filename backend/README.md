@@ -25,6 +25,8 @@ Current backend endpoints:
 - `GET /admin/provider-snapshots` - protected provider snapshot history read.
 - `POST /admin/provider-snapshots` - protected provider snapshot write.
 - `GET /admin/export` - protected JSON export of admin database tables for backups.
+- `POST /admin/telemetry` - protected write endpoint for anonymous consent-based site telemetry.
+- `GET /admin/telemetry/summary` - protected aggregate telemetry summary for `/portal`.
 
 Content publishing is guarded by the same quality check used by
 `/admin/content/check`. It blocks unsupported guarantee-style claims and invalid

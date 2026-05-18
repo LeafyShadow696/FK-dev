@@ -68,8 +68,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             agregované údaje o návštěvnosti a výkonu webu z nástrojů Vercel
-            Analytics a Vercel Speed Insights, pokud návštěvník povolí
-            analytiku
+            Analytics, Vercel Speed Insights a interní anonymní agregace,
+            pokud návštěvník povolí analytiku
           </li>
           <li>
             informace uložené v prohlížeči pro správu souhlasu a případně pro
@@ -130,8 +130,9 @@ export default function PrivacyPage() {
           <li>účetní nebo právní poradce, pokud je to nutné</li>
         </ul>
         <p>
-          Pro hosting, základní webovou analytiku a měření výkonu může být
-          využívána platforma Vercel. Další konkrétní zpracovatelé budou
+          Pro hosting, základní webovou analytiku, měření výkonu a anonymní
+          interní agregace návštěvnosti může být využívána platforma Vercel a
+          backendová služba na Renderu. Další konkrétní zpracovatelé budou
           případně doplněni podle skutečného technického nasazení.
         </p>
       </LegalSection>

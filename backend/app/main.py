@@ -15,7 +15,9 @@ from .database import (
     published_content_values,
     record_audit_event,
     record_provider_snapshot,
+    record_telemetry_event,
     rollback_content_version,
+    telemetry_summary,
     upsert_content_block,
 )
 from .settings import get_settings
@@ -150,6 +152,28 @@ class ContentBlockResponse(BaseModel):
     block: ContentBlockItem | None
     versions: list[ContentVersionItem] = Field(default_factory=list)
     quality: ContentQualityResponse | None = None
+
+
+class TelemetryEventRequest(BaseModel):
+    session_id: str = Field(min_length=12, max_length=80)
+    event_type: str = Field(min_length=2, max_length=40)
+    path: str = Field(min_length=1, max_length=240)
+    referrer: str | None = Field(default=None, max_length=240)
+    viewport: str | None = Field(default=None, max_length=80)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TelemetryEventResponse(BaseModel):
+    stored: bool
+    event_id: str | None
+
+
+class TelemetrySummaryResponse(BaseModel):
+    active_sessions: int
+    events_15m: int
+    events_60m: int
+    top_pages: list[dict[str, Any]]
+    recent_events: list[dict[str, Any]]
 
 
 class ContentRollbackRequest(BaseModel):
@@ -382,6 +406,34 @@ def save_content_block(
         ],
         quality=quality,
     )
+
+
+@app.post("/admin/telemetry", response_model=TelemetryEventResponse)
+def save_telemetry_event(
+    payload: TelemetryEventRequest,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> TelemetryEventResponse:
+    require_backend_token(x_fk_backend_token)
+    event_id = record_telemetry_event(
+        session_id=payload.session_id,
+        event_type=payload.event_type,
+        path=payload.path,
+        referrer=payload.referrer,
+        viewport=payload.viewport,
+        metadata=payload.metadata,
+    )
+
+    return TelemetryEventResponse(stored=event_id is not None, event_id=event_id)
+
+
+@app.get("/admin/telemetry/summary", response_model=TelemetrySummaryResponse)
+def admin_telemetry_summary(
+    x_fk_backend_token: str | None = Header(default=None),
+) -> TelemetrySummaryResponse:
+    require_backend_token(x_fk_backend_token)
+    summary = telemetry_summary()
+
+    return TelemetrySummaryResponse(**summary.__dict__)
 
 
 @app.post("/admin/content/rollback", response_model=ContentBlockResponse)

@@ -29,7 +29,8 @@ export default function CookiesPage() {
           Web používá technické cookies nebo obdobné technologie nezbytné pro
           správné fungování, bezpečnost a základní provoz webu. Volitelně může
           návštěvník povolit uložení předvoleb a anonymní měření návštěvnosti
-          a výkonu přes Vercel Analytics a Vercel Speed Insights.
+          a výkonu přes Vercel Analytics, Vercel Speed Insights a interní
+          agregaci návštěv.
         </p>
       </LegalSection>
 
@@ -43,10 +44,11 @@ export default function CookiesPage() {
 
       <LegalSection title="4. Analytické a marketingové cookies">
         <p>
-          Web může po souhlasu návštěvníka používat Vercel Analytics a Vercel
-          Speed Insights pro základní měření návštěvnosti, výkonu a
-          technického stavu webu. Web aktuálně nepoužívá marketingové cookies
-          ani reklamní profilování. Pokud budou v budoucnu doplněny
+          Web může po souhlasu návštěvníka používat Vercel Analytics, Vercel
+          Speed Insights a interní anonymní agregaci pro základní měření
+          návštěvnosti, výkonu a technického stavu webu. Web aktuálně
+          nepoužívá marketingové cookies ani reklamní profilování. Pokud budou
+          v budoucnu doplněny
           marketingové nebo jiné netechnické nástroje, bude tato stránka
           aktualizována a před jejich aktivací bude vyžádán souhlas.
         </p>
@@ -83,9 +85,11 @@ export default function CookiesPage() {
         <p>
           Web používá <strong>localStorage</strong> pro uložení samotné volby
           souhlasu. Pokud návštěvník povolí předvolby, může se do
-          localStorage uložit také zvolený tmavý, světlý nebo systémový režim. Web
-          nepoužívá localStorage ani sessionStorage pro ukládání uživatelských
-          profilů, přihlášení nebo zpráv z kontaktu.
+          localStorage uložit také zvolený tmavý, světlý nebo systémový režim.
+          Při povolené analytice se může uložit anonymní identifikátor relace
+          pro agregované měření návštěvnosti. Web nepoužívá localStorage ani
+          sessionStorage pro ukládání uživatelských profilů, přihlášení nebo
+          zpráv z kontaktu.
         </p>
       </LegalSection>
 

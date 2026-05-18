@@ -64,6 +64,15 @@ class ContentVersion:
     created_at: str
 
 
+@dataclass(frozen=True)
+class TelemetrySummary:
+    active_sessions: int
+    events_15m: int
+    events_60m: int
+    top_pages: list[dict[str, Any]]
+    recent_events: list[dict[str, Any]]
+
+
 _engine: Engine | None = None
 
 
@@ -161,6 +170,21 @@ def init_database(engine: Engine | None = None) -> bool:
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_content_versions_block_key ON admin_content_versions (block_key, created_at DESC)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_telemetry_events (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              session_id text NOT NULL,
+              event_type text NOT NULL,
+              path text NOT NULL,
+              referrer text,
+              viewport text,
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              created_at timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_created_at ON admin_telemetry_events (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_session_created ON admin_telemetry_events (session_id, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_path_created ON admin_telemetry_events (path, created_at DESC)",
         ]
     else:
         statements = [
@@ -219,6 +243,21 @@ def init_database(engine: Engine | None = None) -> bool:
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_content_versions_block_key ON admin_content_versions (block_key, created_at DESC)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_telemetry_events (
+              id text PRIMARY KEY,
+              session_id text NOT NULL,
+              event_type text NOT NULL,
+              path text NOT NULL,
+              referrer text,
+              viewport text,
+              metadata text NOT NULL DEFAULT '{}',
+              created_at text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_created_at ON admin_telemetry_events (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_session_created ON admin_telemetry_events (session_id, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_telemetry_events_path_created ON admin_telemetry_events (path, created_at DESC)",
         ]
 
     with engine.begin() as connection:
@@ -546,8 +585,202 @@ def export_admin_data() -> dict[str, Any]:
                 "created_at DESC",
             ),
             "admin_settings": _export_rows("admin_settings", "updated_at DESC"),
+            "admin_telemetry_events": _export_rows(
+                "admin_telemetry_events",
+                "created_at DESC",
+            ),
         },
     }
+
+
+def record_telemetry_event(
+    *,
+    session_id: str,
+    event_type: str,
+    path: str,
+    referrer: str | None = None,
+    viewport: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> str | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    event_id = str(uuid.uuid4())
+    payload = metadata or {}
+
+    if engine.dialect.name == "postgresql":
+        statement = text(
+            """
+            INSERT INTO admin_telemetry_events
+              (id, session_id, event_type, path, referrer, viewport, metadata)
+            VALUES
+              (:id, :session_id, :event_type, :path, :referrer, :viewport, CAST(:metadata AS jsonb))
+            """,
+        )
+        params: dict[str, Any] = {
+            "id": event_id,
+            "session_id": session_id,
+            "event_type": event_type,
+            "path": path,
+            "referrer": referrer,
+            "viewport": viewport,
+            "metadata": json.dumps(payload),
+        }
+    else:
+        statement = text(
+            """
+            INSERT INTO admin_telemetry_events
+              (id, session_id, event_type, path, referrer, viewport, metadata, created_at)
+            VALUES
+              (:id, :session_id, :event_type, :path, :referrer, :viewport, :metadata, :created_at)
+            """,
+        )
+        params = {
+            "id": event_id,
+            "session_id": session_id,
+            "event_type": event_type,
+            "path": path,
+            "referrer": referrer,
+            "viewport": viewport,
+            "metadata": json.dumps(payload),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+    with engine.begin() as connection:
+        connection.execute(statement, params)
+
+    return event_id
+
+
+def telemetry_summary() -> TelemetrySummary:
+    engine = get_engine()
+
+    if engine is None:
+        return TelemetrySummary(
+            active_sessions=0,
+            events_15m=0,
+            events_60m=0,
+            top_pages=[],
+            recent_events=[],
+        )
+
+    init_database(engine)
+
+    if engine.dialect.name == "postgresql":
+        active_sessions_statement = text(
+            """
+            SELECT COUNT(DISTINCT session_id)
+            FROM admin_telemetry_events
+            WHERE created_at >= now() - interval '5 minutes'
+            """,
+        )
+        events_15m_statement = text(
+            """
+            SELECT COUNT(*)
+            FROM admin_telemetry_events
+            WHERE created_at >= now() - interval '15 minutes'
+            """,
+        )
+        events_60m_statement = text(
+            """
+            SELECT COUNT(*)
+            FROM admin_telemetry_events
+            WHERE created_at >= now() - interval '60 minutes'
+            """,
+        )
+        top_pages_statement = text(
+            """
+            SELECT path, COUNT(*) AS visits, MAX(created_at) AS last_seen_at
+            FROM admin_telemetry_events
+            WHERE created_at >= now() - interval '60 minutes'
+            GROUP BY path
+            ORDER BY visits DESC, last_seen_at DESC
+            LIMIT 8
+            """,
+        )
+        recent_events_statement = text(
+            """
+            SELECT event_type, path, referrer, viewport, created_at
+            FROM admin_telemetry_events
+            ORDER BY created_at DESC
+            LIMIT 12
+            """,
+        )
+    else:
+        active_sessions_statement = text(
+            """
+            SELECT COUNT(DISTINCT session_id)
+            FROM admin_telemetry_events
+            WHERE created_at >= datetime('now', '-5 minutes')
+            """,
+        )
+        events_15m_statement = text(
+            """
+            SELECT COUNT(*)
+            FROM admin_telemetry_events
+            WHERE created_at >= datetime('now', '-15 minutes')
+            """,
+        )
+        events_60m_statement = text(
+            """
+            SELECT COUNT(*)
+            FROM admin_telemetry_events
+            WHERE created_at >= datetime('now', '-60 minutes')
+            """,
+        )
+        top_pages_statement = text(
+            """
+            SELECT path, COUNT(*) AS visits, MAX(created_at) AS last_seen_at
+            FROM admin_telemetry_events
+            WHERE created_at >= datetime('now', '-60 minutes')
+            GROUP BY path
+            ORDER BY visits DESC, last_seen_at DESC
+            LIMIT 8
+            """,
+        )
+        recent_events_statement = text(
+            """
+            SELECT event_type, path, referrer, viewport, created_at
+            FROM admin_telemetry_events
+            ORDER BY created_at DESC
+            LIMIT 12
+            """,
+        )
+
+    with engine.connect() as connection:
+        active_sessions = connection.execute(active_sessions_statement).scalar_one()
+        events_15m = connection.execute(events_15m_statement).scalar_one()
+        events_60m = connection.execute(events_60m_statement).scalar_one()
+        top_pages = [
+            {
+                "path": str(row["path"]),
+                "visits": int(row["visits"]),
+                "last_seen_at": str(row["last_seen_at"]),
+            }
+            for row in connection.execute(top_pages_statement).mappings()
+        ]
+        recent_events = [
+            {
+                "event_type": str(row["event_type"]),
+                "path": str(row["path"]),
+                "referrer": str(row["referrer"]) if row["referrer"] else None,
+                "viewport": str(row["viewport"]) if row["viewport"] else None,
+                "created_at": str(row["created_at"]),
+            }
+            for row in connection.execute(recent_events_statement).mappings()
+        ]
+
+    return TelemetrySummary(
+        active_sessions=int(active_sessions),
+        events_15m=int(events_15m),
+        events_60m=int(events_60m),
+        top_pages=top_pages,
+        recent_events=recent_events,
+    )
 
 
 def upsert_content_block(

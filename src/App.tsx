@@ -1,4 +1,5 @@
 import { Route, Switch, useLocation } from "wouter"
+import { useEffect } from "react"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 import { Header } from "@/components/layout/Header"
@@ -37,12 +38,71 @@ function VercelInsights() {
   )
 }
 
+function LiveTelemetry() {
+  const { consent } = useConsent()
+  const [location] = useLocation()
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !["fkdev.xyz", "www.fkdev.xyz"].includes(window.location.hostname) ||
+      !consent.analytics
+    ) {
+      return
+    }
+
+    const storageKey = "fkdev-telemetry-session"
+    let existing = ""
+
+    try {
+      existing = window.localStorage.getItem(storageKey) ?? ""
+    } catch {
+      existing = ""
+    }
+
+    const sessionId =
+      existing ||
+      window.crypto.getRandomValues(new Uint32Array(4)).join("").slice(0, 48)
+
+    if (!existing) {
+      try {
+        window.localStorage.setItem(storageKey, sessionId)
+      } catch {
+        // The current in-memory session still provides anonymous aggregation.
+      }
+    }
+
+    const payload = {
+      sessionId,
+      eventType: "page_view",
+      path: window.location.pathname,
+      referrer:
+        document.referrer && new URL(document.referrer).hostname !== window.location.hostname
+          ? new URL(document.referrer).hostname
+          : "",
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+    }
+
+    window.setTimeout(() => {
+      void fetch("/api/telemetry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      })
+    }, 0)
+  }, [consent.analytics, location])
+
+  return null
+}
+
 function AppContent() {
   return (
     <>
       <JsonLd />
       <ScrollToTop />
       <VercelInsights />
+      <LiveTelemetry />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:text-foreground"

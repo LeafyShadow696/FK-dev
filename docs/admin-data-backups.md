@@ -40,6 +40,7 @@ The JSON export includes:
 - `admin_content_blocks`
 - `admin_content_versions`
 - `admin_settings`
+- `admin_telemetry_events`
 
 The export does not include provider API tokens or environment variable values.
 
