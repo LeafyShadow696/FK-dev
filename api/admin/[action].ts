@@ -130,6 +130,14 @@ type OfficialDraftItem = {
   updatedAt: string
 }
 
+type OfficialDraftAgentResult = {
+  subject: string
+  body: string
+  checklist: Array<{ id: string; label: string; done: boolean }>
+  notes: string[]
+  riskLevel: "low" | "medium" | "high"
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -1243,6 +1251,170 @@ async function uploadOfficialDraftToDrive(input: {
   }
 }
 
+function extractResponseText(data: any) {
+  if (typeof data?.output_text === "string") {
+    return data.output_text
+  }
+
+  const parts: string[] = []
+
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) {
+        continue
+      }
+
+      for (const content of item.content) {
+        if (typeof content?.text === "string") {
+          parts.push(content.text)
+        }
+      }
+    }
+  }
+
+  return parts.join("\n").trim()
+}
+
+function sanitizeAgentChecklist(items: unknown) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry: any, index) => ({
+      id: String(entry.id ?? `ai-check-${index}`),
+      label: String(entry.label ?? "").trim().slice(0, 240),
+      done: Boolean(entry.done),
+    }))
+    .filter((entry) => entry.label.length > 0)
+    .slice(0, 12)
+}
+
+async function runOfficialDraftAgent(input: {
+  purpose: string
+  recipient: string
+  subject: string
+  body: string
+  attachments: Array<{ id: string; label: string; done: boolean }>
+  opportunityTitle: string
+}) {
+  const apiKey = getSecret("OPENAI_API_KEY")
+  const model = getSecret("FK_AI_MODEL") || "gpt-4.1-mini"
+
+  if (!apiKey) {
+    return { ok: false, status: 503, data: null, message: "OPENAI_API_KEY není nastavený." }
+  }
+
+  const response = await fetchJson(
+    "https://api.openai.com/v1/responses",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        instructions: [
+          "Jsi soukromý administrativní AI agent pro FKdev.",
+          "Pracuješ česky, věcně a konzervativně.",
+          "Nevymýšlej oprávnění, splnění dotačních podmínek ani právní jistotu.",
+          "Výstup musí být návrh ke kontrole, ne finální odeslání.",
+          "Zachovej identitu: František Kalášek, IČO 23628588, FKdev / TopBot PwnZ(TM), služby: webové aplikace, PWA, automatizace, API integrace, datové zpracování a IT konzultace.",
+        ].join("\n"),
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: JSON.stringify({
+                  task: "Zreviduj a zlepši koncept úřední komunikace pro ruční kontrolu před datovou schránkou.",
+                  purpose: input.purpose,
+                  recipient: input.recipient,
+                  subject: input.subject,
+                  body: input.body,
+                  attachments: input.attachments,
+                  opportunityTitle: input.opportunityTitle,
+                  requiredOutput: {
+                    subject: "upravený předmět",
+                    body: "upravený text zprávy",
+                    checklist: "kontrolní položky před odesláním",
+                    notes: "stručné poznámky a rizika",
+                    riskLevel: "low | medium | high",
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "official_draft_agent_result",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                subject: { type: "string" },
+                body: { type: "string" },
+                checklist: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      id: { type: "string" },
+                      label: { type: "string" },
+                      done: { type: "boolean" },
+                    },
+                    required: ["id", "label", "done"],
+                  },
+                },
+                notes: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                riskLevel: {
+                  type: "string",
+                  enum: ["low", "medium", "high"],
+                },
+              },
+              required: ["subject", "body", "checklist", "notes", "riskLevel"],
+            },
+          },
+        },
+      }),
+    },
+    30000,
+  )
+
+  if (!response.ok) {
+    return { ok: false, status: response.status, data: null, message: "AI revize se nepodařila." }
+  }
+
+  try {
+    const parsed = JSON.parse(extractResponseText(response.data)) as OfficialDraftAgentResult
+    const result: OfficialDraftAgentResult = {
+      subject: String(parsed.subject ?? input.subject).trim().slice(0, 300),
+      body: String(parsed.body ?? input.body).trim().slice(0, 12000),
+      checklist: sanitizeAgentChecklist(parsed.checklist),
+      notes: Array.isArray(parsed.notes)
+        ? parsed.notes.map((note) => String(note).trim()).filter(Boolean).slice(0, 8)
+        : [],
+      riskLevel: ["low", "medium", "high"].includes(String(parsed.riskLevel))
+        ? parsed.riskLevel
+        : "medium",
+    }
+
+    return { ok: true, status: 200, data: result, message: "" }
+  } catch {
+    return { ok: false, status: 502, data: null, message: "AI vrátila neplatný formát odpovědi." }
+  }
+}
+
 async function saveBackendContentBlock(input: {
   key: string
   label: string
@@ -1918,6 +2090,70 @@ export default async function handler(req: any, res: any) {
       drafts: Array.isArray(saved.data.drafts)
         ? saved.data.drafts.map(mapOfficialDraft)
         : [],
+    })
+    return
+  }
+
+  if (action === "official-draft-agent") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const subject = typeof body.subject === "string" ? body.subject.trim() : ""
+    const draftBody = typeof body.body === "string" ? body.body.trim() : ""
+    const recipient = typeof body.recipient === "string" ? body.recipient.trim() : ""
+    const purpose =
+      typeof body.purpose === "string" ? body.purpose.trim() : "eligibility_question"
+    const opportunityTitle =
+      typeof body.opportunityTitle === "string" ? body.opportunityTitle.trim() : ""
+    const attachments = Array.isArray(body.attachments)
+      ? body.attachments
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? "").trim(),
+            done: Boolean(entry.done),
+          }))
+          .filter((entry) => entry.label.length > 0)
+      : []
+
+    if (subject.length < 2 || draftBody.length < 2 || draftBody.length > 12000) {
+      sendJson(res, 400, { message: "Koncept nemá platný předmět nebo text." })
+      return
+    }
+
+    const result = await runOfficialDraftAgent({
+      purpose,
+      recipient,
+      subject,
+      body: draftBody,
+      attachments,
+      opportunityTitle,
+    })
+
+    if (!result.ok || !result.data) {
+      sendJson(res, result.status || 502, {
+        message: result.message || "AI agent teď není dostupný.",
+      })
+      return
+    }
+
+    sendJson(res, 200, {
+      reviewed: true,
+      result: result.data,
     })
     return
   }

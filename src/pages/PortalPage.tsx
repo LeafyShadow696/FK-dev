@@ -528,6 +528,7 @@ function PortalDashboard({
   )
   const [savingOfficialDraft, setSavingOfficialDraft] = useState(false)
   const [archivingOfficialDraft, setArchivingOfficialDraft] = useState(false)
+  const [runningOfficialAgent, setRunningOfficialAgent] = useState(false)
   const [officialMessage, setOfficialMessage] = useState("")
   const [officialDraftCopied, setOfficialDraftCopied] = useState(false)
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
@@ -1186,6 +1187,67 @@ function PortalDashboard({
       setOfficialMessage("Google Drive archiv teď není dostupný. Zkuste to znovu.")
     } finally {
       setArchivingOfficialDraft(false)
+    }
+  }
+
+  async function reviewOfficialDraftWithAgent() {
+    if (!officialSubject.trim() || !officialDraft.trim()) {
+      setOfficialMessage("Před AI revizí doplňte věc a text konceptu.")
+      return
+    }
+
+    setRunningOfficialAgent(true)
+    setOfficialMessage("")
+
+    try {
+      const response = await fetch("/api/admin/official-draft-agent", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          purpose: officialPurpose,
+          recipient: officialRecipient,
+          subject: officialSubject,
+          body: officialDraft,
+          attachments: officialAttachments,
+          opportunityTitle: selectedOpportunity?.title ?? "",
+        }),
+      })
+      const data = await readJson<{
+        result?: {
+          subject: string
+          body: string
+          checklist: OpportunityChecklistItem[]
+          notes: string[]
+          riskLevel: "low" | "medium" | "high"
+        }
+        message?: string
+      }>(response)
+
+      if (!response.ok || !data.result) {
+        setOfficialMessage(data.message ?? "AI revize teď není dostupná.")
+        return
+      }
+
+      setOfficialSubject(data.result.subject)
+      setOfficialDraft(data.result.body)
+      setOfficialAttachments((current) => {
+        const existing = new Set(current.map((item) => item.label.toLowerCase()))
+        const additions = data.result?.checklist.filter(
+          (item) => !existing.has(item.label.toLowerCase()),
+        ) ?? []
+
+        return additions.length > 0 ? [...current, ...additions] : current
+      })
+      setOfficialMessage(
+        `AI revize dokončena. Riziko: ${data.result.riskLevel}. ${
+          data.result.notes[0] ?? "Text je připravený k ruční kontrole."
+        }`,
+      )
+    } catch {
+      setOfficialMessage("AI agent teď není dostupný. Zkuste to znovu.")
+    } finally {
+      setRunningOfficialAgent(false)
     }
   }
 
@@ -2440,6 +2502,19 @@ function PortalDashboard({
                     <Send className="h-4 w-4" aria-hidden />
                   )}
                   Připravit DS
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void reviewOfficialDraftWithAgent()}
+                  disabled={runningOfficialAgent || officialDraft.trim().length === 0}
+                >
+                  {runningOfficialAgent ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Bot className="h-4 w-4" aria-hidden />
+                  )}
+                  AI revize
                 </Button>
                 <Button
                   type="button"

@@ -85,6 +85,11 @@ exports the current official communication draft as Markdown to the configured
 Drive folder. The same request stores returned Drive metadata on the backend
 draft record so later ISDS submission can reference the archived evidence.
 
+The protected Vercel admin API action `/api/admin/official-draft-agent` uses the
+OpenAI Responses API with structured JSON output to revise a draft, suggest
+checklist additions, and surface risk notes. This is a review assistant only;
+final save, archive, and ISDS preparation remain explicit admin actions.
+
 ## Datova Schranka
 
 The configured data box id is `v2328bu`. Authorization is expected through bank

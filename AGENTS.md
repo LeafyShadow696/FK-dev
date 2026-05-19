@@ -256,6 +256,7 @@ Provider integration env vars:
 - `RENDER_BACKEND_URL` - currently `https://fkdev-admin-api.onrender.com`
 - `FK_BACKEND_ADMIN_TOKEN` - private token for protected Python backend admin writes.
 - `OPENAI_API_KEY`
+- `FK_AI_MODEL` - optional model override for private admin AI features; default is `gpt-4.1-mini`.
 - `GEMINI_API_KEY`
 - `TAILNET_UNIQUE_ID`
 - `TAILSCALE_API_KEY`
@@ -331,6 +332,10 @@ server-side OAuth refresh-token or service-account env configuration.
 The Vercel admin API action `/api/admin/official-draft-archive` uploads the
 current official draft as Markdown to Google Drive when Drive env vars are
 configured, then saves the Drive file metadata back to the protected backend.
+The protected `/api/admin/official-draft-agent` action uses the OpenAI Responses
+API server-side to revise official communication drafts into structured JSON.
+It must remain an assistant-only review step; do not let it send ISDS messages
+or archive without explicit admin action.
 
 ## Provider and Deployment Snapshot
 
