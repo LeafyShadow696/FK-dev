@@ -8,6 +8,7 @@ from .content_quality import check_content_quality
 from .database import (
     database_status,
     export_admin_data,
+    list_official_drafts,
     list_opportunities,
     list_content_versions,
     list_content_blocks,
@@ -19,6 +20,7 @@ from .database import (
     record_telemetry_event,
     refresh_opportunities,
     rollback_content_version,
+    save_official_draft,
     telemetry_summary,
     update_opportunity_workflow,
     upsert_content_block,
@@ -222,6 +224,42 @@ class OpportunityWorkflowRequest(BaseModel):
 class OpportunityWorkflowResponse(BaseModel):
     stored: bool
     opportunity: OpportunityItem | None
+
+
+class OfficialDraftItem(BaseModel):
+    id: str
+    opportunity_id: str | None
+    purpose: str
+    recipient: str
+    subject: str
+    body: str
+    attachments: list[dict[str, Any]]
+    review_status: str
+    metadata: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
+class OfficialDraftsResponse(BaseModel):
+    drafts: list[OfficialDraftItem]
+
+
+class OfficialDraftRequest(BaseModel):
+    id: str | None = Field(default=None, max_length=80)
+    opportunity_id: str | None = Field(default=None, max_length=80)
+    purpose: str = Field(min_length=2, max_length=80)
+    recipient: str = Field(default="", max_length=240)
+    subject: str = Field(min_length=2, max_length=300)
+    body: str = Field(min_length=2, max_length=12000)
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
+    review_status: str = Field(default="draft", max_length=40)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class OfficialDraftResponse(BaseModel):
+    stored: bool
+    draft: OfficialDraftItem | None
+    drafts: list[OfficialDraftItem]
 
 
 class ContentRollbackRequest(BaseModel):
@@ -549,6 +587,65 @@ def admin_opportunity_workflow(
     return OpportunityWorkflowResponse(
         stored=True,
         opportunity=OpportunityItem(**opportunity.__dict__),
+    )
+
+
+@app.get("/admin/official-drafts", response_model=OfficialDraftsResponse)
+def admin_official_drafts(
+    limit: int = Query(default=20, ge=1, le=50),
+    x_fk_backend_token: str | None = Header(default=None),
+) -> OfficialDraftsResponse:
+    require_backend_token(x_fk_backend_token)
+    drafts = [
+        OfficialDraftItem(**draft.__dict__)
+        for draft in list_official_drafts(limit=limit)
+    ]
+
+    return OfficialDraftsResponse(drafts=drafts)
+
+
+@app.post("/admin/official-drafts", response_model=OfficialDraftResponse)
+def admin_save_official_draft(
+    payload: OfficialDraftRequest,
+    request: Request,
+    x_fk_backend_token: str | None = Header(default=None),
+) -> OfficialDraftResponse:
+    require_backend_token(x_fk_backend_token)
+    draft = save_official_draft(
+        draft_id=payload.id,
+        opportunity_id=payload.opportunity_id,
+        purpose=payload.purpose,
+        recipient=payload.recipient,
+        subject=payload.subject,
+        body=payload.body,
+        attachments=payload.attachments,
+        review_status=payload.review_status,
+        metadata=payload.metadata,
+    )
+
+    if draft is None:
+        raise HTTPException(status_code=400, detail="Official draft is invalid.")
+
+    record_audit_event(
+        "official_draft.saved",
+        actor="admin",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        metadata={
+            "draft_id": draft.id,
+            "opportunity_id": draft.opportunity_id,
+            "purpose": draft.purpose,
+            "review_status": draft.review_status,
+        },
+    )
+
+    return OfficialDraftResponse(
+        stored=True,
+        draft=OfficialDraftItem(**draft.__dict__),
+        drafts=[
+            OfficialDraftItem(**item.__dict__)
+            for item in list_official_drafts(limit=20)
+        ],
     )
 
 

@@ -104,6 +104,21 @@ class Opportunity:
     last_seen_at: str
 
 
+@dataclass(frozen=True)
+class OfficialDraft:
+    id: str
+    opportunity_id: str | None
+    purpose: str
+    recipient: str
+    subject: str
+    body: str
+    attachments: list[dict[str, Any]]
+    review_status: str
+    metadata: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
 _engine: Engine | None = None
 
 
@@ -242,6 +257,23 @@ def init_database(engine: Engine | None = None) -> bool:
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_score_seen ON admin_opportunities (score DESC, last_seen_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_category ON admin_opportunities (category)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_official_drafts (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              opportunity_id uuid,
+              purpose text NOT NULL,
+              recipient text NOT NULL DEFAULT '',
+              subject text NOT NULL,
+              body text NOT NULL,
+              attachments jsonb NOT NULL DEFAULT '[]'::jsonb,
+              review_status text NOT NULL DEFAULT 'draft',
+              metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+              created_at timestamptz NOT NULL DEFAULT now(),
+              updated_at timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_official_drafts_updated ON admin_official_drafts (updated_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_official_drafts_status ON admin_official_drafts (review_status)",
         ]
     else:
         statements = [
@@ -341,6 +373,23 @@ def init_database(engine: Engine | None = None) -> bool:
             """,
             "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_score_seen ON admin_opportunities (score DESC, last_seen_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_admin_opportunities_category ON admin_opportunities (category)",
+            """
+            CREATE TABLE IF NOT EXISTS admin_official_drafts (
+              id text PRIMARY KEY,
+              opportunity_id text,
+              purpose text NOT NULL,
+              recipient text NOT NULL DEFAULT '',
+              subject text NOT NULL,
+              body text NOT NULL,
+              attachments text NOT NULL DEFAULT '[]',
+              review_status text NOT NULL DEFAULT 'draft',
+              metadata text NOT NULL DEFAULT '{}',
+              created_at text NOT NULL,
+              updated_at text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_admin_official_drafts_updated ON admin_official_drafts (updated_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_admin_official_drafts_status ON admin_official_drafts (review_status)",
         ]
 
     with engine.begin() as connection:
@@ -651,6 +700,16 @@ def _json_value(value: Any) -> Any:
     return value
 
 
+def _json_array(value: Any) -> list[Any]:
+    parsed = _json_value(value)
+    return parsed if isinstance(parsed, list) else []
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    parsed = _json_value(value)
+    return parsed if isinstance(parsed, dict) else {}
+
+
 def _export_rows(table: str, order_by: str | None = None) -> list[dict[str, Any]]:
     engine = get_engine()
 
@@ -703,6 +762,10 @@ def export_admin_data() -> dict[str, Any]:
             "admin_opportunities": _export_rows(
                 "admin_opportunities",
                 "score DESC, last_seen_at DESC",
+            ),
+            "admin_official_drafts": _export_rows(
+                "admin_official_drafts",
+                "updated_at DESC",
             ),
         },
     }
@@ -1664,6 +1727,158 @@ def _parse_optional_datetime(value: str | None) -> datetime | None:
         parsed = parsed.replace(tzinfo=UTC)
 
     return parsed.astimezone(UTC)
+
+
+def _sanitize_official_attachments(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+
+    for index, item in enumerate(items[:30]):
+        label = str(item.get("label", "")).strip()
+        if not label:
+            continue
+
+        sanitized.append(
+            {
+                "id": str(item.get("id") or f"attachment-{index}")[:100],
+                "label": label[:240],
+                "done": bool(item.get("done", False)),
+            },
+        )
+
+    return sanitized
+
+
+def _official_draft_from_row(row: Any) -> OfficialDraft:
+    return OfficialDraft(
+        id=str(row["id"]),
+        opportunity_id=str(row["opportunity_id"]) if row["opportunity_id"] is not None else None,
+        purpose=str(row["purpose"]),
+        recipient=str(row["recipient"]),
+        subject=str(row["subject"]),
+        body=str(row["body"]),
+        attachments=_json_array(row["attachments"]),
+        review_status=str(row["review_status"]),
+        metadata=_json_object(row["metadata"]),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def save_official_draft(
+    *,
+    draft_id: str | None = None,
+    opportunity_id: str | None = None,
+    purpose: str,
+    recipient: str,
+    subject: str,
+    body: str,
+    attachments: list[dict[str, Any]] | None = None,
+    review_status: str = "draft",
+    metadata: dict[str, Any] | None = None,
+) -> OfficialDraft | None:
+    engine = get_engine()
+
+    if engine is None:
+        return None
+
+    init_database(engine)
+
+    normalized_id = draft_id.strip() if draft_id else str(uuid.uuid4())
+    normalized_subject = subject.strip()
+    normalized_body = body.strip()
+
+    if not normalized_subject or not normalized_body:
+        return None
+
+    now = datetime.now(UTC).isoformat()
+    params: dict[str, Any] = {
+        "id": normalized_id,
+        "opportunity_id": opportunity_id or None,
+        "purpose": purpose.strip()[:80] or "eligibility_question",
+        "recipient": recipient.strip()[:240],
+        "subject": normalized_subject[:300],
+        "body": normalized_body[:12000],
+        "attachments": json.dumps(_sanitize_official_attachments(attachments or [])),
+        "review_status": review_status.strip()[:40] or "draft",
+        "metadata": json.dumps(metadata or {}),
+    }
+
+    if engine.dialect.name == "postgresql":
+        statement = text(
+            """
+            INSERT INTO admin_official_drafts
+              (id, opportunity_id, purpose, recipient, subject, body, attachments, review_status, metadata)
+            VALUES
+              (:id, CAST(:opportunity_id AS uuid), :purpose, :recipient, :subject, :body, CAST(:attachments AS jsonb), :review_status, CAST(:metadata AS jsonb))
+            ON CONFLICT (id) DO UPDATE SET
+              opportunity_id = EXCLUDED.opportunity_id,
+              purpose = EXCLUDED.purpose,
+              recipient = EXCLUDED.recipient,
+              subject = EXCLUDED.subject,
+              body = EXCLUDED.body,
+              attachments = EXCLUDED.attachments,
+              review_status = EXCLUDED.review_status,
+              metadata = EXCLUDED.metadata,
+              updated_at = now()
+            RETURNING id, opportunity_id, purpose, recipient, subject, body, attachments, review_status, metadata, created_at, updated_at
+            """,
+        )
+    else:
+        statement = text(
+            """
+            INSERT INTO admin_official_drafts
+              (id, opportunity_id, purpose, recipient, subject, body, attachments, review_status, metadata, created_at, updated_at)
+            VALUES
+              (:id, :opportunity_id, :purpose, :recipient, :subject, :body, :attachments, :review_status, :metadata, :created_at, :updated_at)
+            ON CONFLICT (id) DO UPDATE SET
+              opportunity_id = :opportunity_id,
+              purpose = :purpose,
+              recipient = :recipient,
+              subject = :subject,
+              body = :body,
+              attachments = :attachments,
+              review_status = :review_status,
+              metadata = :metadata,
+              updated_at = :updated_at
+            """,
+        )
+        params["created_at"] = now
+        params["updated_at"] = now
+
+    with engine.begin() as connection:
+        result = connection.execute(statement, params)
+        row = result.mappings().first() if result.returns_rows else None
+
+    return _official_draft_from_row(row) if row else get_official_draft(normalized_id)
+
+
+def get_official_draft(draft_id: str) -> OfficialDraft | None:
+    return next((draft for draft in list_official_drafts(limit=50) if draft.id == draft_id), None)
+
+
+def list_official_drafts(limit: int = 20) -> list[OfficialDraft]:
+    engine = get_engine()
+
+    if engine is None:
+        return []
+
+    init_database(engine)
+    safe_limit = max(1, min(limit, 50))
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT id, opportunity_id, purpose, recipient, subject, body, attachments, review_status, metadata, created_at, updated_at
+                FROM admin_official_drafts
+                ORDER BY updated_at DESC
+                LIMIT :limit
+                """,
+            ),
+            {"limit": safe_limit},
+        ).mappings()
+
+        return [_official_draft_from_row(row) for row in rows]
 
 
 def get_opportunity(opportunity_id: str) -> Opportunity | None:

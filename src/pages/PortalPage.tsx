@@ -105,6 +105,7 @@ type PortalOverview = {
   contentBlocks?: Array<ContentBlock>
   contentVersions?: Array<ContentVersion>
   opportunities?: Array<OpportunityItem>
+  officialDrafts?: Array<OfficialDraftItem>
   configuredIntegrations: number
   checklist: string[]
 }
@@ -136,6 +137,20 @@ type OpportunityChecklistItem = {
   id: string
   label: string
   done: boolean
+}
+
+type OfficialDraftItem = {
+  id: string
+  opportunityId: string | null
+  purpose: string
+  recipient: string
+  subject: string
+  body: string
+  attachments: OpportunityChecklistItem[]
+  reviewStatus: string
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
 }
 
 type ContentBlock = {
@@ -505,6 +520,11 @@ function PortalDashboard({
   const [officialAttachments, setOfficialAttachments] = useState<
     OpportunityChecklistItem[]
   >([])
+  const [officialDraftId, setOfficialDraftId] = useState("")
+  const [officialDrafts, setOfficialDrafts] = useState<OfficialDraftItem[]>(
+    () => overview.officialDrafts ?? [],
+  )
+  const [savingOfficialDraft, setSavingOfficialDraft] = useState(false)
   const [officialMessage, setOfficialMessage] = useState("")
   const [officialDraftCopied, setOfficialDraftCopied] = useState(false)
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
@@ -547,6 +567,10 @@ function PortalDashboard({
         : nextOpportunities[0].id,
     )
   }, [overview.opportunities])
+
+  useEffect(() => {
+    setOfficialDrafts(overview.officialDrafts ?? [])
+  }, [overview.officialDrafts])
 
   useEffect(() => {
     if (!selectedOpportunity && opportunities[0]) {
@@ -975,6 +999,7 @@ function PortalDashboard({
     setOfficialRecipient(recipient)
     setOfficialSubject(inferredSubject)
     setOfficialAttachments(attachments)
+    setOfficialDraftId("")
     setOfficialDraft(
       [
         `Adresát: ${recipient}`,
@@ -1003,6 +1028,66 @@ function PortalDashboard({
         .join("\n"),
     )
     setOfficialMessage("Koncept úřední zprávy je připravený ke kontrole.")
+  }
+
+  function selectOfficialDraft(draft: OfficialDraftItem) {
+    setOfficialDraftId(draft.id)
+    setOfficialPurpose(draft.purpose)
+    setOfficialRecipient(draft.recipient)
+    setOfficialSubject(draft.subject)
+    setOfficialDraft(draft.body)
+    setOfficialAttachments(draft.attachments)
+    setOfficialMessage(`Načten uložený koncept: ${draft.subject}`)
+  }
+
+  async function saveOfficialDraft() {
+    if (!officialSubject.trim() || !officialDraft.trim()) {
+      setOfficialMessage("Před uložením doplňte věc a text konceptu.")
+      return
+    }
+
+    setSavingOfficialDraft(true)
+    setOfficialMessage("")
+
+    try {
+      const response = await fetch("/api/admin/official-draft", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: officialDraftId || null,
+          opportunityId: selectedOpportunity?.id ?? null,
+          purpose: officialPurpose,
+          recipient: officialRecipient,
+          subject: officialSubject,
+          body: officialDraft,
+          attachments: officialAttachments,
+          reviewStatus: "draft",
+          metadata: {
+            source: "portal_official_communication",
+            selectedOpportunityTitle: selectedOpportunity?.title ?? null,
+          },
+        }),
+      })
+      const data = await readJson<{
+        draft?: OfficialDraftItem
+        drafts?: OfficialDraftItem[]
+        message?: string
+      }>(response)
+
+      if (!response.ok || !data.draft) {
+        setOfficialMessage(data.message ?? "Koncept se nepodařilo uložit.")
+        return
+      }
+
+      setOfficialDraftId(data.draft.id)
+      setOfficialDrafts(Array.isArray(data.drafts) ? data.drafts : [data.draft])
+      setOfficialMessage("Koncept je uložený v backendu.")
+    } catch {
+      setOfficialMessage("Koncept teď nejde uložit. Zkuste to znovu.")
+    } finally {
+      setSavingOfficialDraft(false)
+    }
   }
 
   async function copyOfficialDraft() {
@@ -2213,11 +2298,57 @@ function PortalDashboard({
                 <Button
                   type="button"
                   variant="secondary"
+                  onClick={() => void saveOfficialDraft()}
+                  disabled={savingOfficialDraft || officialDraft.trim().length === 0}
+                >
+                  {savingOfficialDraft ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  Uložit
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
                   onClick={() => setOfficialAttachments(suggestedOfficialAttachments(selectedOpportunity))}
                 >
                   <ListChecks className="h-4 w-4" aria-hidden />
                   Přílohy
                 </Button>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3">
+                <h4 className="font-display text-sm font-semibold text-foreground">
+                  Uložené koncepty
+                </h4>
+                <div className="mt-3 grid gap-2">
+                  {officialDrafts.length > 0 ? (
+                    officialDrafts.slice(0, 5).map((draft) => (
+                      <button
+                        key={draft.id}
+                        type="button"
+                        onClick={() => selectOfficialDraft(draft)}
+                        className={`rounded-lg border p-3 text-left text-sm transition hover:border-foreground/50 ${
+                          officialDraftId === draft.id
+                            ? "border-foreground/40 bg-background/50"
+                            : "border-border/50 bg-background/25"
+                        }`}
+                      >
+                        <span className="block font-medium text-foreground">
+                          {draft.subject}
+                        </span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {officialPurposeLabel(draft.purpose)} · {formatAuditDate(draft.updatedAt)}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Zatím nejsou uložené žádné koncepty.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

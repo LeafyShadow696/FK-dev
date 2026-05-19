@@ -116,6 +116,20 @@ type OpportunityItem = {
   lastSeenAt: string
 }
 
+type OfficialDraftItem = {
+  id: string
+  opportunityId: string | null
+  purpose: string
+  recipient: string
+  subject: string
+  body: string
+  attachments: Array<{ id: string; label: string; done: boolean }>
+  reviewStatus: string
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
 function getSecret(name: string) {
   return process.env[name]?.trim() ?? ""
 }
@@ -839,6 +853,33 @@ function mapOpportunity(item: any): OpportunityItem {
   }
 }
 
+function mapOfficialDraft(item: any): OfficialDraftItem {
+  return {
+    id: String(item.id ?? ""),
+    opportunityId: item.opportunity_id ? String(item.opportunity_id) : null,
+    purpose: String(item.purpose ?? "eligibility_question"),
+    recipient: String(item.recipient ?? ""),
+    subject: String(item.subject ?? ""),
+    body: String(item.body ?? ""),
+    attachments: Array.isArray(item.attachments)
+      ? item.attachments
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? ""),
+            done: Boolean(entry.done),
+          }))
+      : [],
+    reviewStatus: String(item.review_status ?? "draft"),
+    metadata:
+      item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+        ? item.metadata
+        : {},
+    createdAt: String(item.created_at ?? ""),
+    updatedAt: String(item.updated_at ?? ""),
+  }
+}
+
 async function backendOpportunities(): Promise<OpportunityItem[]> {
   const backendUrl =
     getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
@@ -920,6 +961,76 @@ async function saveBackendOpportunityWorkflow(input: {
       }),
     },
   )
+}
+
+async function backendOfficialDrafts(): Promise<OfficialDraftItem[]> {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return []
+  }
+
+  try {
+    const response = await fetchJson(
+      `${backendUrl.replace(/\/$/, "")}/admin/official-drafts?limit=20`,
+      {
+        headers: {
+          Accept: "application/json",
+          "X-FK-Backend-Token": backendToken,
+        },
+      },
+    )
+
+    if (!response.ok || !Array.isArray(response.data?.drafts)) {
+      return []
+    }
+
+    return response.data.drafts.map(mapOfficialDraft)
+  } catch {
+    return []
+  }
+}
+
+async function saveBackendOfficialDraft(input: {
+  id: string | null
+  opportunityId: string | null
+  purpose: string
+  recipient: string
+  subject: string
+  body: string
+  attachments: Array<{ id: string; label: string; done: boolean }>
+  reviewStatus: string
+  metadata: Record<string, unknown>
+}) {
+  const backendUrl =
+    getSecret("RENDER_BACKEND_URL") || "https://fkdev-admin-api.onrender.com"
+  const backendToken = getSecret("FK_BACKEND_ADMIN_TOKEN")
+
+  if (!backendToken) {
+    return { ok: false, status: 503, data: null }
+  }
+
+  return fetchJson(`${backendUrl.replace(/\/$/, "")}/admin/official-drafts`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-FK-Backend-Token": backendToken,
+    },
+    body: JSON.stringify({
+      id: input.id,
+      opportunity_id: input.opportunityId,
+      purpose: input.purpose,
+      recipient: input.recipient,
+      subject: input.subject,
+      body: input.body,
+      attachments: input.attachments,
+      review_status: input.reviewStatus,
+      metadata: input.metadata,
+    }),
+  })
 }
 
 async function saveBackendContentBlock(input: {
@@ -1412,6 +1523,85 @@ export default async function handler(req: any, res: any) {
     return
   }
 
+  if (action === "official-draft") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const subject = typeof body.subject === "string" ? body.subject.trim() : ""
+    const draftBody = typeof body.body === "string" ? body.body.trim() : ""
+    const recipient = typeof body.recipient === "string" ? body.recipient.trim() : ""
+    const purpose =
+      typeof body.purpose === "string" ? body.purpose.trim() : "eligibility_question"
+    const reviewStatus =
+      typeof body.reviewStatus === "string" ? body.reviewStatus.trim() : "draft"
+    const id = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null
+    const opportunityId =
+      typeof body.opportunityId === "string" && body.opportunityId.trim()
+        ? body.opportunityId.trim()
+        : null
+    const attachments = Array.isArray(body.attachments)
+      ? body.attachments
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? "").trim(),
+            done: Boolean(entry.done),
+          }))
+          .filter((entry) => entry.label.length > 0)
+      : []
+    const metadata =
+      body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? (body.metadata as Record<string, unknown>)
+        : {}
+
+    if (subject.length < 2 || draftBody.length < 2 || draftBody.length > 12000) {
+      sendJson(res, 400, { message: "Koncept nemá platný předmět nebo text." })
+      return
+    }
+
+    const saved = await saveBackendOfficialDraft({
+      id,
+      opportunityId,
+      purpose,
+      recipient,
+      subject,
+      body: draftBody,
+      attachments,
+      reviewStatus,
+      metadata,
+    })
+
+    if (!saved.ok || !saved.data?.draft) {
+      sendJson(res, saved.status || 502, {
+        message: "Nepodařilo se uložit úřední koncept.",
+      })
+      return
+    }
+
+    sendJson(res, 200, {
+      stored: true,
+      draft: mapOfficialDraft(saved.data.draft),
+      drafts: Array.isArray(saved.data.drafts)
+        ? saved.data.drafts.map(mapOfficialDraft)
+        : [],
+    })
+    return
+  }
+
   if (action === "content-check") {
     if (req.method !== "POST") {
       sendJson(res, 405, { message: "Metoda není povolená." })
@@ -1503,13 +1693,14 @@ export default async function handler(req: any, res: any) {
 
     const integrations = integrationStatuses()
 
-    const [providers, auditLogs, operations, contentState, telemetry, opportunities] = await Promise.all([
+    const [providers, auditLogs, operations, contentState, telemetry, opportunities, officialDrafts] = await Promise.all([
       providerSummaries(),
       backendAuditEvents(),
       operationChecks(),
       backendContentState(),
       backendTelemetrySummary(),
       backendOpportunities(),
+      backendOfficialDrafts(),
     ])
     await writeProviderSnapshot(providers, operations)
     const providerSnapshots = await backendProviderSnapshots()
@@ -1531,6 +1722,7 @@ export default async function handler(req: any, res: any) {
       contentVersions: contentState.versions,
       telemetry,
       opportunities,
+      officialDrafts,
       configuredIntegrations: integrations.filter((item) => item.configured)
         .length,
       checklist: [
