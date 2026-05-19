@@ -13,8 +13,8 @@ Recommended stack:
 - Database: PostgreSQL
 - File storage:
   - Vercel Blob for public site assets and simple public downloads
-  - S3-compatible private storage such as Cloudflare R2 for larger private files
-    and future exports
+  - Google Drive for private admin exports, official-draft supporting documents,
+    and working files that should stay outside the public site bundle
 
 ## Why Python / FastAPI
 
@@ -70,10 +70,22 @@ audit log.
 
 Do not store secret env files in Git.
 
-Use platform environment variables for provider tokens. Use object storage only
-for non-secret uploaded files, generated reports, media, and exports. If secret
-files need to be retained, store them outside the repository and migrate their
-values into encrypted provider env vars.
+Use platform environment variables for provider tokens. Use Google Drive only
+for non-secret uploaded files, generated reports, official-draft supporting
+documents, media, and exports. If secret files need to be retained, store them
+outside the repository and migrate their values into encrypted provider env vars.
+
+Google Drive production writes require either OAuth refresh-token configuration
+or a service account configured server-side. Local Codex/Google Drive app access
+is useful for manual maintenance, but production code must not depend on a local
+agent session.
+
+## Datova Schranka
+
+The configured data box id is `v2328bu`. Authorization is expected through bank
+identity, so the portal may prepare and audit a draft, but final submission must
+remain a manual confirmation step. Do not store bank-identity credentials in the
+repository or frontend.
 
 ## Current Secret Handling
 

@@ -219,7 +219,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - Vercel serverless API under `/api/admin/[action]`
 - HttpOnly cookie session
 - environment readiness checks
-- integration status placeholders for Vercel, GitHub, Render, Railway, database, storage, and AI
+- integration status placeholders for Vercel, GitHub, Render, Railway, database, Google Drive storage, datova schranka, and AI
 - live provider summaries for Vercel deployments and GitHub repository/commit state
 - read-only operational checks for Vercel domains and GitHub Actions workflow runs
 - PostgreSQL-backed provider status snapshots for the admin portal history view
@@ -263,9 +263,15 @@ Provider integration env vars:
 - `TAILSCALE_LOGIN_ID`
 - `TAILSCALE_LOGIN_SECRET`
 - `FK_ISDS_BOX_ID`
+- `FK_ISDS_AUTH_METHOD` - currently `bank_identity`.
 - `FK_ISDS_LOGIN`
 - `FK_ISDS_CERT_PATH`
 - `FK_ISDS_CERT_BASE64`
+- `FK_GOOGLE_DRIVE_FOLDER_ID`
+- `FK_GOOGLE_DRIVE_CLIENT_ID`
+- `FK_GOOGLE_DRIVE_CLIENT_SECRET`
+- `FK_GOOGLE_DRIVE_REFRESH_TOKEN`
+- `FK_GOOGLE_SERVICE_ACCOUNT_JSON_BASE64`
 
 Keep `/portal` private. Do not expose dashboard data without a verified
 server-side session. Do not add provider tokens to frontend code. Do not add
@@ -318,6 +324,10 @@ Official communication drafts are stored through the protected
 The current datova schranka flow only marks a checked draft as `ready_for_isds`
 and records an audit event. Do not add automatic ISDS submission without an
 explicit manual confirmation step and server-side credential handling.
+The configured data box id is `v2328bu` and authorization is expected through
+bank identity. Google Drive is the selected private cloud storage target for
+official draft exports and supporting documents; production writes require
+server-side OAuth refresh-token or service-account env configuration.
 
 ## Provider and Deployment Snapshot
 

@@ -273,9 +273,13 @@ function integrationStatuses(): IntegrationStatus[] {
     },
     {
       id: "storage",
-      label: "Cloud storage",
-      configured: Boolean(getSecret("FK_STORAGE_CONNECTION")),
-      description: "Bezpečné ukládání souborů, exportů a budoucích assetů.",
+      label: "Google Drive storage",
+      configured: Boolean(
+        getSecret("FK_GOOGLE_DRIVE_FOLDER_ID") &&
+          (getSecret("FK_GOOGLE_DRIVE_REFRESH_TOKEN") ||
+            getSecret("FK_GOOGLE_SERVICE_ACCOUNT_JSON_BASE64")),
+      ),
+      description: "Soukromé exporty, podklady a pracovní dokumenty v Google Drive.",
     },
     {
       id: "database",
@@ -304,13 +308,11 @@ function integrationStatuses(): IntegrationStatus[] {
     {
       id: "isds",
       label: "Datová schránka",
-      configured: hasAnySecret([
-        "FK_ISDS_BOX_ID",
-        "FK_ISDS_LOGIN",
-        "FK_ISDS_CERT_PATH",
-        "FK_ISDS_CERT_BASE64",
-      ]),
-      description: "Příprava úředních zpráv pro ISDS s ručním potvrzením odeslání.",
+      configured: Boolean(
+        getSecret("FK_ISDS_BOX_ID") &&
+          getSecret("FK_ISDS_AUTH_METHOD").toLowerCase() === "bank_identity",
+      ),
+      description: "Datová schránka v2328bu, autorizace bankovní identitou a ruční potvrzení odeslání.",
     },
   ]
 }

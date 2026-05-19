@@ -534,6 +534,7 @@ function PortalDashboard({
   const operations = overview.operations ?? []
   const providerSnapshots = overview.providerSnapshots ?? []
   const isdsIntegration = overview.integrations.find((item) => item.id === "isds")
+  const storageIntegration = overview.integrations.find((item) => item.id === "storage")
   const telemetry = overview.telemetry ?? {
     activeSessions: 0,
     events15m: 0,
@@ -1116,6 +1117,9 @@ function PortalDashboard({
       "ready_for_isds",
       {
         channel: "isds",
+        dataBoxId: "v2328bu",
+        authorizationMethod: "bank_identity",
+        archiveTarget: "google_drive",
         dispatchMode: "manual_confirmation_required",
         preparedAt: new Date().toISOString(),
         missingAttachments: missingAttachments.map((item) => item.label),
@@ -2326,8 +2330,13 @@ function PortalDashboard({
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       {isdsIntegration?.configured
-                        ? "Konektor má serverové nastavení. Odeslání zůstává blokované ručním potvrzením."
-                        : "Konektor zatím čeká na serverové ISDS údaje. Koncept lze bezpečně připravit a archivovat."}
+                        ? "Schránka v2328bu je zapsaná v serverovém nastavení. Odeslání zůstává blokované ruční autorizací přes bankovní identitu."
+                        : "Schránka v2328bu čeká na produkční env nastavení. Koncept lze bezpečně připravit a archivovat."}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {storageIntegration?.configured
+                        ? "Google Drive archiv je připravený pro podklady a exporty."
+                        : "Google Drive archiv čeká na OAuth nebo service-account konfiguraci."}
                     </p>
                   </div>
                 </div>

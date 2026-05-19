@@ -6,6 +6,7 @@ import {
   GitBranch,
   HardDrive,
   LockKeyhole,
+  MailCheck,
   Server,
   Shield,
 } from "lucide-react"
@@ -43,9 +44,9 @@ export const portalIntegrations = [
   },
   {
     id: "storage",
-    label: "Cloud storage",
+    label: "Google Drive",
     icon: HardDrive,
-    purpose: "Bezpečné soubory, exporty a asset management.",
+    purpose: "Soukromé exporty, úřední podklady a pracovní dokumenty.",
   },
   {
     id: "ai",
@@ -59,6 +60,12 @@ export const portalIntegrations = [
     icon: Shield,
     purpose: "Privátní síťový přístup pro backend a interní služby.",
   },
+  {
+    id: "isds",
+    label: "Datová schránka",
+    icon: MailCheck,
+    purpose: "Koncepty podání, ruční autorizace bankovní identitou a audit stopa.",
+  },
 ] as const
 
 export const backendRecommendation = {
@@ -66,7 +73,7 @@ export const backendRecommendation = {
   hosting: "Render Web Service",
   database: "PostgreSQL",
   storage:
-    "Vercel Blob pro veřejné assety, S3/R2 kompatibilní storage pro větší privátní soubory",
+    "Google Drive pro soukromé exporty a úřední podklady; Vercel Blob pouze pro veřejné assety",
   reason:
     "FastAPI je vhodné pro čitelné typed API, integrace s externími providery, audit logy a delší backend procesy mimo statický frontend.",
 } as const

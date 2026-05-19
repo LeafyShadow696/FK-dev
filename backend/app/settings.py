@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     fk_storage_connection: str | None = None
     fk_backend_admin_token: str | None = None
+    fk_isds_box_id: str | None = None
+    fk_isds_auth_method: str | None = None
+    fk_google_drive_folder_id: str | None = None
+    fk_google_drive_client_id: str | None = None
+    fk_google_drive_client_secret: str | None = None
+    fk_google_drive_refresh_token: str | None = None
+    fk_google_service_account_json_base64: str | None = None
 
 
 @lru_cache

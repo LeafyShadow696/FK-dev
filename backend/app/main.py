@@ -748,8 +748,22 @@ def integrations() -> list[IntegrationStatus]:
         ),
         IntegrationStatus(
             id="storage",
-            label="Cloud storage",
-            configured=bool(settings.fk_storage_connection),
+            label="Google Drive storage",
+            configured=bool(
+                settings.fk_google_drive_folder_id
+                and (
+                    settings.fk_google_drive_refresh_token
+                    or settings.fk_google_service_account_json_base64
+                )
+            ),
+        ),
+        IntegrationStatus(
+            id="isds",
+            label="Datová schránka",
+            configured=bool(
+                settings.fk_isds_box_id
+                and settings.fk_isds_auth_method == "bank_identity"
+            ),
         ),
         IntegrationStatus(
             id="ai",
