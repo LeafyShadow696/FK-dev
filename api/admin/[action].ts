@@ -301,6 +301,17 @@ function integrationStatuses(): IntegrationStatus[] {
       ]),
       description: "Soukromé síťové napojení pro interní služby a bezpečný backend přístup.",
     },
+    {
+      id: "isds",
+      label: "Datová schránka",
+      configured: hasAnySecret([
+        "FK_ISDS_BOX_ID",
+        "FK_ISDS_LOGIN",
+        "FK_ISDS_CERT_PATH",
+        "FK_ISDS_CERT_BASE64",
+      ]),
+      description: "Příprava úředních zpráv pro ISDS s ručním potvrzením odeslání.",
+    },
   ]
 }
 
@@ -1548,6 +1559,13 @@ export default async function handler(req: any, res: any) {
       typeof body.purpose === "string" ? body.purpose.trim() : "eligibility_question"
     const reviewStatus =
       typeof body.reviewStatus === "string" ? body.reviewStatus.trim() : "draft"
+    const allowedReviewStatuses = new Set([
+      "draft",
+      "ready_for_review",
+      "ready_for_isds",
+      "sent_manually",
+      "archived",
+    ])
     const id = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null
     const opportunityId =
       typeof body.opportunityId === "string" && body.opportunityId.trim()
@@ -1570,6 +1588,11 @@ export default async function handler(req: any, res: any) {
 
     if (subject.length < 2 || draftBody.length < 2 || draftBody.length > 12000) {
       sendJson(res, 400, { message: "Koncept nemá platný předmět nebo text." })
+      return
+    }
+
+    if (!allowedReviewStatuses.has(reviewStatus)) {
+      sendJson(res, 400, { message: "Koncept nemá platný stav kontroly." })
       return
     }
 

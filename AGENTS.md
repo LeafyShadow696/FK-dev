@@ -230,6 +230,7 @@ The `/portal` route is the private admin entrypoint. It currently provides:
 - protected admin data export through the FastAPI `/admin/export` endpoint
 - consent-based anonymous live telemetry shown only after admin login
 - Opportunity Radar for grants, public procurement channels, and regional market-demand signals
+- official communication drafts persisted in PostgreSQL with a guarded "ready for datova schranka" state
 - Python/FastAPI backend integration summary
 - Render backend database status through `/admin/status`
 - protected backend audit event read/write endpoint through `/admin/audit`
@@ -261,6 +262,10 @@ Provider integration env vars:
 - `TAILSCALE_AUTH_TOKEN`
 - `TAILSCALE_LOGIN_ID`
 - `TAILSCALE_LOGIN_SECRET`
+- `FK_ISDS_BOX_ID`
+- `FK_ISDS_LOGIN`
+- `FK_ISDS_CERT_PATH`
+- `FK_ISDS_CERT_BASE64`
 
 Keep `/portal` private. Do not expose dashboard data without a verified
 server-side session. Do not add provider tokens to frontend code. Do not add
@@ -307,6 +312,12 @@ The protected FastAPI `/admin/export` endpoint returns a JSON export of admin
 database tables for backup purposes. The scheduled GitHub Actions workflow
 `Admin data export` calls it daily and stores a 90-day artifact. It requires the
 repository secret `FK_BACKEND_ADMIN_TOKEN`.
+
+Official communication drafts are stored through the protected
+`/admin/official-drafts` FastAPI endpoint and surfaced in the private portal.
+The current datova schranka flow only marks a checked draft as `ready_for_isds`
+and records an audit event. Do not add automatic ISDS submission without an
+explicit manual confirmation step and server-side credential handling.
 
 ## Provider and Deployment Snapshot
 

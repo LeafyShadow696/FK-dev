@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Send,
   Trash2,
   Wand2,
   Wifi,
@@ -532,6 +533,7 @@ function PortalDashboard({
   const auditLogs = overview.auditLogs ?? []
   const operations = overview.operations ?? []
   const providerSnapshots = overview.providerSnapshots ?? []
+  const isdsIntegration = overview.integrations.find((item) => item.id === "isds")
   const telemetry = overview.telemetry ?? {
     activeSessions: 0,
     events15m: 0,
@@ -751,6 +753,18 @@ function PortalDashboard({
     }
 
     return labels[purpose] ?? "Dotaz k podmínkám"
+  }
+
+  function officialReviewStatusLabel(status: string) {
+    const labels: Record<string, string> = {
+      draft: "Rozpracováno",
+      ready_for_review: "Ke kontrole",
+      ready_for_isds: "Připraveno pro DS",
+      sent_manually: "Odesláno ručně",
+      archived: "Archiv",
+    }
+
+    return labels[status] ?? "Rozpracováno"
   }
 
   function suggestedOpportunityChecklist(item: OpportunityItem): OpportunityChecklistItem[] {
@@ -1040,7 +1054,11 @@ function PortalDashboard({
     setOfficialMessage(`Načten uložený koncept: ${draft.subject}`)
   }
 
-  async function saveOfficialDraft() {
+  async function saveOfficialDraft(
+    reviewStatus = "draft",
+    extraMetadata: Record<string, unknown> = {},
+    successMessage = "Koncept je uložený v backendu.",
+  ) {
     if (!officialSubject.trim() || !officialDraft.trim()) {
       setOfficialMessage("Před uložením doplňte věc a text konceptu.")
       return
@@ -1062,10 +1080,11 @@ function PortalDashboard({
           subject: officialSubject,
           body: officialDraft,
           attachments: officialAttachments,
-          reviewStatus: "draft",
+          reviewStatus,
           metadata: {
             source: "portal_official_communication",
             selectedOpportunityTitle: selectedOpportunity?.title ?? null,
+            ...extraMetadata,
           },
         }),
       })
@@ -1082,12 +1101,29 @@ function PortalDashboard({
 
       setOfficialDraftId(data.draft.id)
       setOfficialDrafts(Array.isArray(data.drafts) ? data.drafts : [data.draft])
-      setOfficialMessage("Koncept je uložený v backendu.")
+      setOfficialMessage(successMessage)
     } catch {
       setOfficialMessage("Koncept teď nejde uložit. Zkuste to znovu.")
     } finally {
       setSavingOfficialDraft(false)
     }
+  }
+
+  async function prepareOfficialDraftForIsds() {
+    const missingAttachments = officialAttachments.filter((item) => !item.done)
+
+    await saveOfficialDraft(
+      "ready_for_isds",
+      {
+        channel: "isds",
+        dispatchMode: "manual_confirmation_required",
+        preparedAt: new Date().toISOString(),
+        missingAttachments: missingAttachments.map((item) => item.label),
+      },
+      missingAttachments.length > 0
+        ? `Koncept je uložený pro datovou schránku. Zbývá ověřit přílohy: ${missingAttachments.length}.`
+        : "Koncept je uložený jako připravený pro datovou schránku.",
+    )
   }
 
   async function copyOfficialDraft() {
@@ -2281,6 +2317,22 @@ function PortalDashboard({
                 {adminIdentityProfile.address}. Rozsah: {adminIdentityProfile.services}.
               </div>
 
+              <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 text-foreground/90" aria-hidden />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Datová schránka
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {isdsIntegration?.configured
+                        ? "Konektor má serverové nastavení. Odeslání zůstává blokované ručním potvrzením."
+                        : "Konektor zatím čeká na serverové ISDS údaje. Koncept lze bezpečně připravit a archivovat."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {selectedOpportunity ? (
                 <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3 text-sm leading-relaxed text-muted-foreground">
                   Zdroj konceptu:{" "}
@@ -2307,6 +2359,19 @@ function PortalDashboard({
                     <Save className="h-4 w-4" aria-hidden />
                   )}
                   Uložit
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void prepareOfficialDraftForIsds()}
+                  disabled={savingOfficialDraft || officialDraft.trim().length === 0}
+                >
+                  {savingOfficialDraft ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Send className="h-4 w-4" aria-hidden />
+                  )}
+                  Připravit DS
                 </Button>
                 <Button
                   type="button"
@@ -2339,7 +2404,9 @@ function PortalDashboard({
                           {draft.subject}
                         </span>
                         <span className="mt-1 block text-xs text-muted-foreground">
-                          {officialPurposeLabel(draft.purpose)} · {formatAuditDate(draft.updatedAt)}
+                          {officialPurposeLabel(draft.purpose)} ·{" "}
+                          {officialReviewStatusLabel(draft.reviewStatus)} ·{" "}
+                          {formatAuditDate(draft.updatedAt)}
                         </span>
                       </button>
                     ))

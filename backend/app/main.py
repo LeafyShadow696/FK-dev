@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .content_quality import check_content_quality
 from .database import (
@@ -254,6 +254,23 @@ class OfficialDraftRequest(BaseModel):
     attachments: list[dict[str, Any]] = Field(default_factory=list)
     review_status: str = Field(default="draft", max_length=40)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("review_status")
+    @classmethod
+    def validate_review_status(cls, value: str) -> str:
+        normalized = value.strip() or "draft"
+        allowed = {
+            "draft",
+            "ready_for_review",
+            "ready_for_isds",
+            "sent_manually",
+            "archived",
+        }
+
+        if normalized not in allowed:
+            raise ValueError("Unsupported official draft review status.")
+
+        return normalized
 
 
 class OfficialDraftResponse(BaseModel):
@@ -626,8 +643,13 @@ def admin_save_official_draft(
     if draft is None:
         raise HTTPException(status_code=400, detail="Official draft is invalid.")
 
+    event_type = (
+        "official_draft.ready_for_isds"
+        if draft.review_status == "ready_for_isds"
+        else "official_draft.saved"
+    )
     record_audit_event(
-        "official_draft.saved",
+        event_type,
         actor="admin",
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
