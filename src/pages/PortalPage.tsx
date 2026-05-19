@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
   Activity,
   ArrowRight,
+  Bot,
+  Building2,
   CheckCircle2,
   Clock3,
   ClipboardCopy,
@@ -25,6 +27,7 @@ import {
   Save,
   Search,
   Trash2,
+  Wand2,
   Wifi,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -198,6 +201,16 @@ const defaultContentBlocks: ContentBlock[] = [
     publishedAt: null,
   },
 ]
+
+const adminIdentityProfile = {
+  displayName: "František Kalášek",
+  businessName: "František Kalášek",
+  ico: "23628588",
+  address: "592 03 Dankovice 9",
+  brand: "FKdev / TopBot PwnZ(TM)",
+  services:
+    "vývoj webových aplikací, PWA, automatizace, API integrace, datové zpracování, hosting/webové portály a IT konzultace",
+}
 
 async function readJson<T>(response: Response) {
   const text = await response.text()
@@ -485,6 +498,15 @@ function PortalDashboard({
   const [opportunitySourceFilter, setOpportunitySourceFilter] = useState("all")
   const [opportunityDeadlineFilter, setOpportunityDeadlineFilter] = useState("all")
   const [opportunityReportCopied, setOpportunityReportCopied] = useState(false)
+  const [officialPurpose, setOfficialPurpose] = useState("eligibility_question")
+  const [officialRecipient, setOfficialRecipient] = useState("")
+  const [officialSubject, setOfficialSubject] = useState("")
+  const [officialDraft, setOfficialDraft] = useState("")
+  const [officialAttachments, setOfficialAttachments] = useState<
+    OpportunityChecklistItem[]
+  >([])
+  const [officialMessage, setOfficialMessage] = useState("")
+  const [officialDraftCopied, setOfficialDraftCopied] = useState(false)
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
@@ -695,6 +717,18 @@ function PortalDashboard({
     return labels[status] ?? "Ověřit"
   }
 
+  function officialPurposeLabel(purpose: string) {
+    const labels: Record<string, string> = {
+      eligibility_question: "Dotaz k podmínkám",
+      grant_application: "Žádost / záměr",
+      supplement: "Doplnění podkladů",
+      authority_reply: "Odpověď úřadu",
+      procurement_question: "Dotaz k zakázce",
+    }
+
+    return labels[purpose] ?? "Dotaz k podmínkám"
+  }
+
   function suggestedOpportunityChecklist(item: OpportunityItem): OpportunityChecklistItem[] {
     const base = [
       "Ověřit aktuální detail zdroje a deadline",
@@ -724,6 +758,40 @@ function PortalDashboard({
       label,
       done: false,
     }))
+  }
+
+  function suggestedOfficialAttachments(item?: OpportunityItem | null) {
+    const base = [
+      "Identifikace žadatele: jméno, IČO, sídlo",
+      "Stručný popis záměru a poskytovaných služeb",
+      "Kontaktní údaje pro zpětnou odpověď",
+    ]
+    const categorySpecific: Record<string, string[]> = {
+      grant: [
+        "Popis projektu nebo investičního záměru",
+        "Předběžný rozpočet a plán financování",
+      ],
+      eu_call: [
+        "Popis role žadatele nebo partnera",
+        "Shrnutí relevantních zkušeností a technické kapacity",
+      ],
+      public_procurement: [
+        "Dotaz k zadávací dokumentaci nebo kvalifikačním podmínkám",
+        "Reference nebo stručný profil dodavatele",
+      ],
+      market_signal: [
+        "Návrh oslovení a relevantní nabídka služeb",
+        "Odkaz na web nebo portfolio",
+      ],
+    }
+
+    return [...base, ...(item ? categorySpecific[item.category] ?? [] : [])].map(
+      (label) => ({
+        id: `official-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        label,
+        done: false,
+      }),
+    )
   }
 
   async function refreshOpportunities() {
@@ -882,6 +950,79 @@ function PortalDashboard({
       "text/markdown",
     )
     setOpportunityMessage("Souhrn příležitostí je stažený jako Markdown.")
+  }
+
+  function generateOfficialDraft() {
+    const item = selectedOpportunity
+    const purpose = officialPurposeLabel(officialPurpose)
+    const inferredSubject = item
+      ? `${purpose}: ${item.title}`
+      : `${purpose}: ověření podmínek a dalšího postupu`
+    const recipient =
+      officialRecipient.trim() ||
+      (item?.metadata.provider
+        ? String(item.metadata.provider)
+        : "Příslušný úřad / poskytovatel výzvy")
+    const deadline = item?.deadline
+      ? formatOpportunityDeadline(item.deadline)
+      : "není uveden"
+    const reasons = item?.matchReasons.slice(0, 3).join(" ") || ""
+    const attachments =
+      officialAttachments.length > 0
+        ? officialAttachments
+        : suggestedOfficialAttachments(item)
+
+    setOfficialRecipient(recipient)
+    setOfficialSubject(inferredSubject)
+    setOfficialAttachments(attachments)
+    setOfficialDraft(
+      [
+        `Adresát: ${recipient}`,
+        `Věc: ${inferredSubject}`,
+        "",
+        "Dobrý den,",
+        "",
+        `obracím se na Vás jako ${adminIdentityProfile.businessName}, IČO ${adminIdentityProfile.ico}, se sídlem ${adminIdentityProfile.address}. Působím pod značkou ${adminIdentityProfile.brand} a zaměřuji se na ${adminIdentityProfile.services}.`,
+        "",
+        item
+          ? `Rád bych ověřil další postup k položce „${item.title}“. Kategorie: ${opportunityCategoryLabel(item.category)}. Zdroj: ${opportunitySourceLabel(item.metadata)}. Deadline: ${deadline}.`
+          : "Rád bych ověřil podmínky a další vhodný postup pro připravované úřední podání.",
+        reasons ? `Relevantní důvody k ověření: ${reasons}` : "",
+        item ? `Navržený další krok: ${item.nextAction}` : "",
+        "",
+        "Prosím o potvrzení, zda je výše uvedený záměr způsobilý k řešení danou cestou, a případně o sdělení, jaké přílohy nebo doplňující informace mám připravit.",
+        "",
+        "Předpokládané přílohy / podklady:",
+        ...attachments.map((attachment) => `- ${attachment.label}`),
+        "",
+        "Děkuji a přeji pěkný den.",
+        "",
+        adminIdentityProfile.displayName,
+      ]
+        .filter((line) => line !== "")
+        .join("\n"),
+    )
+    setOfficialMessage("Koncept úřední zprávy je připravený ke kontrole.")
+  }
+
+  async function copyOfficialDraft() {
+    try {
+      await navigator.clipboard.writeText(officialDraft)
+      setOfficialDraftCopied(true)
+      setOfficialMessage("Koncept je zkopírovaný do schránky.")
+      window.setTimeout(() => setOfficialDraftCopied(false), 1800)
+    } catch {
+      setOfficialMessage("Koncept se nepodařilo zkopírovat. Použijte ruční výběr textu.")
+    }
+  }
+
+  function downloadOfficialDraft() {
+    downloadTextFile(
+      `fkdev-uredni-podani-${new Date().toISOString().slice(0, 10)}.md`,
+      officialDraft,
+      "text/markdown",
+    )
+    setOfficialMessage("Koncept je stažený jako Markdown.")
   }
 
   async function saveOpportunityWorkflow() {
@@ -1965,6 +2106,245 @@ function PortalDashboard({
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="mt-8 rounded-[var(--radius)] border border-border/70 bg-card/45 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-foreground/90" aria-hidden />
+              <div>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  Úřední komunikace
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Koncept podání připravený z vybrané příležitosti a profilu FKdev.
+                </p>
+              </div>
+            </div>
+            <span className="w-fit rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+              koncept bez odeslání
+            </span>
+          </div>
+
+          {officialMessage ? (
+            <p className="mt-4 rounded-[var(--radius)] border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
+              {officialMessage}
+            </p>
+          ) : null}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/25 p-4">
+              <div className="flex items-center gap-3">
+                <Bot className="h-5 w-5 text-foreground/90" aria-hidden />
+                <div>
+                  <h3 className="font-display text-base font-semibold text-foreground">
+                    Agent pro návrh podání
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Vyplní text, ale finální kontrola a odeslání zůstává na vás.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <label className="grid gap-2 text-sm text-muted-foreground">
+                  Typ komunikace
+                  <select
+                    value={officialPurpose}
+                    onChange={(event) => setOfficialPurpose(event.target.value)}
+                    className="rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+                  >
+                    {[
+                      "eligibility_question",
+                      "grant_application",
+                      "supplement",
+                      "authority_reply",
+                      "procurement_question",
+                    ].map((purpose) => (
+                      <option key={purpose} value={purpose}>
+                        {officialPurposeLabel(purpose)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-muted-foreground">
+                  Adresát
+                  <input
+                    type="text"
+                    value={officialRecipient}
+                    onChange={(event) => setOfficialRecipient(event.target.value)}
+                    className="rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+                    placeholder="Úřad, poskytovatel výzvy nebo zadavatel"
+                  />
+                </label>
+
+                <label className="grid gap-2 text-sm text-muted-foreground">
+                  Věc
+                  <input
+                    type="text"
+                    value={officialSubject}
+                    onChange={(event) => setOfficialSubject(event.target.value)}
+                    className="rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/50"
+                    placeholder="Předmět zprávy"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3 text-xs leading-relaxed text-muted-foreground">
+                Profil: {adminIdentityProfile.displayName}, IČO {adminIdentityProfile.ico},{" "}
+                {adminIdentityProfile.address}. Rozsah: {adminIdentityProfile.services}.
+              </div>
+
+              {selectedOpportunity ? (
+                <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3 text-sm leading-relaxed text-muted-foreground">
+                  Zdroj konceptu:{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedOpportunity.title}
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button type="button" onClick={generateOfficialDraft}>
+                  <Wand2 className="h-4 w-4" aria-hidden />
+                  Vytvořit koncept
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setOfficialAttachments(suggestedOfficialAttachments(selectedOpportunity))}
+                >
+                  <ListChecks className="h-4 w-4" aria-hidden />
+                  Přílohy
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius)] border border-border/60 bg-background/25 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="font-display text-base font-semibold text-foreground">
+                    Koncept zprávy
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Text je připravený pro ruční kontrolu, export nebo pozdější ISDS konektor.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void copyOfficialDraft()}
+                    disabled={officialDraft.trim().length === 0}
+                  >
+                    <ClipboardCopy className="h-4 w-4" aria-hidden />
+                    {officialDraftCopied ? "Zkopírováno" : "Kopírovat"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={downloadOfficialDraft}
+                    disabled={officialDraft.trim().length === 0}
+                  >
+                    <Download className="h-4 w-4" aria-hidden />
+                    Markdown
+                  </Button>
+                </div>
+              </div>
+
+              <textarea
+                value={officialDraft}
+                onChange={(event) => setOfficialDraft(event.target.value)}
+                rows={12}
+                className="mt-4 w-full resize-y rounded-lg border border-border/70 bg-background/60 px-3 py-2 text-sm leading-relaxed text-foreground outline-none focus:border-foreground/50"
+                placeholder="Koncept se vytvoří po kliknutí na Vytvořit koncept."
+                aria-label="Koncept úředního podání"
+              />
+
+              <div className="mt-4 rounded-lg border border-border/50 bg-background/25 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-display text-sm font-semibold text-foreground">
+                    Checklist příloh
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOfficialAttachments((current) => [
+                        ...current,
+                        {
+                          id: `official-local-${Date.now()}-${current.length}`,
+                          label: "",
+                          done: false,
+                        },
+                      ])
+                    }
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 text-foreground hover:border-foreground/50"
+                    aria-label="Přidat přílohu"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  {officialAttachments.length > 0 ? (
+                    officialAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border border-border/50 bg-background/25 p-2"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={attachment.done}
+                          onChange={(event) =>
+                            setOfficialAttachments((current) =>
+                              current.map((item) =>
+                                item.id === attachment.id
+                                  ? { ...item, done: event.target.checked }
+                                  : item,
+                              ),
+                            )
+                          }
+                          className="h-4 w-4"
+                          aria-label={`Příloha připravena: ${attachment.label}`}
+                        />
+                        <input
+                          type="text"
+                          value={attachment.label}
+                          onChange={(event) =>
+                            setOfficialAttachments((current) =>
+                              current.map((item) =>
+                                item.id === attachment.id
+                                  ? { ...item, label: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          className="min-w-0 rounded-md border border-border/60 bg-background/60 px-2 py-1.5 text-sm text-foreground outline-none focus:border-foreground/50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOfficialAttachments((current) =>
+                              current.filter((item) => item.id !== attachment.id),
+                            )
+                          }
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                          aria-label={`Odebrat přílohu: ${attachment.label}`}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Checklist příloh se založí spolu s konceptem nebo tlačítkem Přílohy.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {selectedContent ? (
