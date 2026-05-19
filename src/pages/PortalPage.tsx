@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  ClipboardCopy,
   Download,
   Eye,
   FileText,
@@ -16,6 +17,7 @@ import {
   LockKeyhole,
   LogOut,
   Plus,
+  Printer,
   ScrollText,
   Server,
   ShieldCheck,
@@ -482,6 +484,7 @@ function PortalDashboard({
   const [opportunityCategoryFilter, setOpportunityCategoryFilter] = useState("all")
   const [opportunitySourceFilter, setOpportunitySourceFilter] = useState("all")
   const [opportunityDeadlineFilter, setOpportunityDeadlineFilter] = useState("all")
+  const [opportunityReportCopied, setOpportunityReportCopied] = useState(false)
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
   const providers = overview.providers ?? []
   const auditLogs = overview.auditLogs ?? []
@@ -625,6 +628,18 @@ function PortalDashboard({
   function csvCell(value: string | number | null | undefined) {
     const text = String(value ?? "")
     return `"${text.replace(/"/g, '""')}"`
+  }
+
+  function downloadTextFile(filename: string, content: string, type = "text/plain") {
+    const blob = new Blob([content], { type: `${type};charset=utf-8` })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   function statusLabel(ok: boolean) {
@@ -841,16 +856,32 @@ function PortalDashboard({
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => csvCell(cell)).join(","))
       .join("\r\n")
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `fkdev-opportunity-radar-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    downloadTextFile(
+      `fkdev-opportunity-radar-${new Date().toISOString().slice(0, 10)}.csv`,
+      `\uFEFF${csv}`,
+      "text/csv",
+    )
     setOpportunityMessage(`Exportováno ${filteredOpportunities.length} položek do CSV.`)
+  }
+
+  async function copyOpportunityReport() {
+    try {
+      await navigator.clipboard.writeText(opportunityReport)
+      setOpportunityReportCopied(true)
+      setOpportunityMessage("Souhrn příležitostí je zkopírovaný do schránky.")
+      window.setTimeout(() => setOpportunityReportCopied(false), 1800)
+    } catch {
+      setOpportunityMessage("Souhrn se nepodařilo zkopírovat. Použijte ruční výběr textu.")
+    }
+  }
+
+  function downloadOpportunityReport() {
+    downloadTextFile(
+      `fkdev-opportunity-report-${new Date().toISOString().slice(0, 10)}.md`,
+      opportunityReport,
+      "text/markdown",
+    )
+    setOpportunityMessage("Souhrn příležitostí je stažený jako Markdown.")
   }
 
   async function saveOpportunityWorkflow() {
@@ -1029,6 +1060,81 @@ function PortalDashboard({
       }).length,
     }
   }, [filteredOpportunities])
+  const opportunityReport = useMemo(() => {
+    const generatedAt = new Intl.DateTimeFormat("cs-CZ", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date())
+    const topItems = filteredOpportunities
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+    const filters = [
+      opportunitySearch.trim() ? `hledani: ${opportunitySearch.trim()}` : null,
+      opportunityWorkflowFilter !== "all"
+        ? `workflow: ${opportunityWorkflowLabel(opportunityWorkflowFilter)}`
+        : null,
+      opportunityCategoryFilter !== "all"
+        ? `kategorie: ${opportunityCategoryLabel(opportunityCategoryFilter)}`
+        : null,
+      opportunitySourceFilter !== "all"
+        ? `zdroj: ${
+            opportunities.find((item) => opportunitySourceKey(item) === opportunitySourceFilter)
+              ? opportunitySourceLabel(
+                  opportunities.find((item) => opportunitySourceKey(item) === opportunitySourceFilter)
+                    ?.metadata ?? {},
+                )
+              : opportunitySourceFilter
+          }`
+        : null,
+      opportunityDeadlineFilter !== "all" ? `deadline: ${opportunityDeadlineFilter}` : null,
+    ].filter(Boolean)
+
+    return [
+      "# FKdev Opportunity Radar - souhrn",
+      "",
+      `Vygenerovano: ${generatedAt}`,
+      `Polozky ve vyberu: ${filteredOpportunities.length} / ${opportunities.length}`,
+      filters.length > 0 ? `Filtry: ${filters.join(", ")}` : "Filtry: bez omezeni",
+      "",
+      "## Rychly prehled",
+      "",
+      `- Nove: ${opportunityStats.newItems}`,
+      `- Overit: ${opportunityStats.toVerify}`,
+      `- Vhodne: ${opportunityStats.goodFit}`,
+      `- Deadline do 7 dnu: ${opportunityStats.dueSoon}`,
+      "",
+      "## Prioritni polozky",
+      "",
+      ...(topItems.length > 0
+        ? topItems.flatMap((item, index) => [
+            `${index + 1}. ${item.title}`,
+            `   - Kategorie: ${opportunityCategoryLabel(item.category)}`,
+            `   - Workflow: ${opportunityWorkflowLabel(item.workflowStatus)}`,
+            `   - Zdroj: ${opportunitySourceLabel(item.metadata)}`,
+            `   - Skore: ${item.score}`,
+            `   - Deadline: ${
+              item.deadline ? formatOpportunityDeadline(item.deadline) : "neuveden"
+            }`,
+            `   - Dalsi krok: ${item.nextAction}`,
+            `   - URL: ${item.url}`,
+            "",
+          ])
+        : ["Bez polozek v aktualnim vyberu.", ""]),
+      "## Poznamka",
+      "",
+      "Tento souhrn vychazi z aktualniho filtrovaneho pohledu v soukromem admin portalu.",
+    ].join("\n")
+  }, [
+    filteredOpportunities,
+    opportunities,
+    opportunityCategoryFilter,
+    opportunityDeadlineFilter,
+    opportunitySearch,
+    opportunitySourceFilter,
+    opportunityStats,
+    opportunityWorkflowFilter,
+  ])
 
   function selectContentBlock(key: string) {
     const next = contentBlocks.find((block) => block.key === key)
@@ -1551,6 +1657,58 @@ function PortalDashboard({
             >
               Vyčistit filtry
             </button>
+          </div>
+
+          <div className="mt-5 rounded-[var(--radius)] border border-border/60 bg-background/25 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-foreground/90" aria-hidden />
+                <div>
+                  <h3 className="font-display text-base font-semibold text-foreground">
+                    Souhrn příležitostí
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Aktuální filtrovaný výběr připravený pro e-mail, poznámku nebo PDF.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void copyOpportunityReport()}
+                  disabled={filteredOpportunities.length === 0}
+                >
+                  <ClipboardCopy className="h-4 w-4" aria-hidden />
+                  {opportunityReportCopied ? "Zkopírováno" : "Kopírovat"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={downloadOpportunityReport}
+                  disabled={filteredOpportunities.length === 0}
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  Markdown
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => window.print()}
+                  disabled={filteredOpportunities.length === 0}
+                >
+                  <Printer className="h-4 w-4" aria-hidden />
+                  PDF
+                </Button>
+              </div>
+            </div>
+            <textarea
+              value={opportunityReport}
+              readOnly
+              rows={8}
+              className="mt-4 w-full resize-y rounded-lg border border-border/70 bg-background/60 px-3 py-2 font-mono text-xs leading-relaxed text-foreground outline-none"
+              aria-label="Souhrn příležitostí"
+            />
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
