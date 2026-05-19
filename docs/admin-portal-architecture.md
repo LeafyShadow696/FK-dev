@@ -80,6 +80,11 @@ or a service account configured server-side. Local Codex/Google Drive app access
 is useful for manual maintenance, but production code must not depend on a local
 agent session.
 
+The protected Vercel admin API action `/api/admin/official-draft-archive`
+exports the current official communication draft as Markdown to the configured
+Drive folder. The same request stores returned Drive metadata on the backend
+draft record so later ISDS submission can reference the archived evidence.
+
 ## Datova Schranka
 
 The configured data box id is `v2328bu`. Authorization is expected through bank

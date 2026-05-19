@@ -328,6 +328,9 @@ The configured data box id is `v2328bu` and authorization is expected through
 bank identity. Google Drive is the selected private cloud storage target for
 official draft exports and supporting documents; production writes require
 server-side OAuth refresh-token or service-account env configuration.
+The Vercel admin API action `/api/admin/official-draft-archive` uploads the
+current official draft as Markdown to Google Drive when Drive env vars are
+configured, then saves the Drive file metadata back to the protected backend.
 
 ## Provider and Deployment Snapshot
 

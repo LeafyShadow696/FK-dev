@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto"
+import { createHmac, createSign, randomBytes, timingSafeEqual } from "node:crypto"
 
 const SESSION_COOKIE = "fk_admin_session"
 const SESSION_TTL_SECONDS = 60 * 60 * 8
@@ -1046,6 +1046,203 @@ async function saveBackendOfficialDraft(input: {
   })
 }
 
+function officialDraftMarkdown(input: {
+  recipient: string
+  subject: string
+  body: string
+  attachments: Array<{ id: string; label: string; done: boolean }>
+}) {
+  const attachments =
+    input.attachments.length > 0
+      ? input.attachments
+          .map((item) => `- [${item.done ? "x" : " "}] ${item.label}`)
+          .join("\n")
+      : "- bez evidovaných příloh"
+
+  return [
+    `# ${input.subject}`,
+    "",
+    `Adresát: ${input.recipient || "neuveden"}`,
+    `Vytvořeno: ${new Date().toISOString()}`,
+    "",
+    "## Text",
+    "",
+    input.body,
+    "",
+    "## Přílohy",
+    "",
+    attachments,
+  ].join("\n")
+}
+
+function driveSafeFilename(value: string) {
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90)
+
+  return normalized || "uredni-koncept"
+}
+
+async function googleDriveAccessToken() {
+  const clientId = getSecret("FK_GOOGLE_DRIVE_CLIENT_ID")
+  const clientSecret = getSecret("FK_GOOGLE_DRIVE_CLIENT_SECRET")
+  const refreshToken = getSecret("FK_GOOGLE_DRIVE_REFRESH_TOKEN")
+  const serviceAccountJsonBase64 = getSecret("FK_GOOGLE_SERVICE_ACCOUNT_JSON_BASE64")
+
+  if (serviceAccountJsonBase64) {
+    try {
+      const serviceAccount = JSON.parse(
+        Buffer.from(serviceAccountJsonBase64, "base64").toString("utf8"),
+      ) as {
+        client_email?: string
+        private_key?: string
+        token_uri?: string
+      }
+      const now = Math.floor(Date.now() / 1000)
+      const header = toBase64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }))
+      const claim = toBase64Url(
+        JSON.stringify({
+          iss: serviceAccount.client_email,
+          scope: "https://www.googleapis.com/auth/drive.file",
+          aud: serviceAccount.token_uri || "https://oauth2.googleapis.com/token",
+          exp: now + 3600,
+          iat: now,
+        }),
+      )
+      const signer = createSign("RSA-SHA256")
+      signer.update(`${header}.${claim}`)
+      const signature = signer.sign(String(serviceAccount.private_key), "base64url")
+      const assertion = `${header}.${claim}.${signature}`
+      const response = await fetchJson(
+        serviceAccount.token_uri || "https://oauth2.googleapis.com/token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion,
+          }).toString(),
+        },
+        12000,
+      )
+      const token = typeof response.data?.access_token === "string"
+        ? response.data.access_token
+        : ""
+
+      return {
+        ok: response.ok && Boolean(token),
+        status: response.status,
+        token,
+        message: response.ok ? "" : "Google service-account token se nepodařilo získat.",
+      }
+    } catch {
+      return { ok: false, status: 503, token: "", message: "Google service-account konfigurace není platná." }
+    }
+  }
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return { ok: false, status: 503, token: "", message: "Google Drive OAuth není nastavený." }
+  }
+
+  const response = await fetchJson(
+    "https://oauth2.googleapis.com/token",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }).toString(),
+    },
+    12000,
+  )
+
+  const token = typeof response.data?.access_token === "string"
+    ? response.data.access_token
+    : ""
+
+  return {
+    ok: response.ok && Boolean(token),
+    status: response.status,
+    token,
+    message: response.ok ? "" : "Google OAuth token se nepodařilo obnovit.",
+  }
+}
+
+async function uploadOfficialDraftToDrive(input: {
+  recipient: string
+  subject: string
+  body: string
+  attachments: Array<{ id: string; label: string; done: boolean }>
+}) {
+  const folderId = getSecret("FK_GOOGLE_DRIVE_FOLDER_ID")
+
+  if (!folderId) {
+    return { ok: false, status: 503, data: null, message: "Chybí cílová složka Google Drive." }
+  }
+
+  const tokenResult = await googleDriveAccessToken()
+
+  if (!tokenResult.ok) {
+    return {
+      ok: false,
+      status: tokenResult.status || 503,
+      data: null,
+      message: tokenResult.message,
+    }
+  }
+
+  const boundary = `fkdev-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const filename = `${new Date().toISOString().slice(0, 10)}-${driveSafeFilename(input.subject)}.md`
+  const metadata = {
+    name: filename,
+    mimeType: "text/markdown",
+    parents: [folderId],
+  }
+  const content = officialDraftMarkdown(input)
+  const body = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(metadata),
+    `--${boundary}`,
+    "Content-Type: text/markdown; charset=UTF-8",
+    "",
+    content,
+    `--${boundary}--`,
+    "",
+  ].join("\r\n")
+
+  const response = await fetchJson(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,mimeType",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tokenResult.token}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    },
+    20000,
+  )
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    data: response.data,
+    message: response.ok ? "" : "Nahrání do Google Drive se nepodařilo.",
+  }
+}
+
 async function saveBackendContentBlock(input: {
   key: string
   label: string
@@ -1619,6 +1816,104 @@ export default async function handler(req: any, res: any) {
 
     sendJson(res, 200, {
       stored: true,
+      draft: mapOfficialDraft(saved.data.draft),
+      drafts: Array.isArray(saved.data.drafts)
+        ? saved.data.drafts.map(mapOfficialDraft)
+        : [],
+    })
+    return
+  }
+
+  if (action === "official-draft-archive") {
+    if (req.method !== "POST") {
+      sendJson(res, 405, { message: "Metoda není povolená." })
+      return
+    }
+
+    if (!config.ready) {
+      sendJson(res, 503, {
+        message: "Admin přístup čeká na nastavení serverových proměnných.",
+      })
+      return
+    }
+
+    if (!requireAuth(req, res, config.sessionSecret)) {
+      return
+    }
+
+    const body = readBody(req)
+    const subject = typeof body.subject === "string" ? body.subject.trim() : ""
+    const draftBody = typeof body.body === "string" ? body.body.trim() : ""
+    const recipient = typeof body.recipient === "string" ? body.recipient.trim() : ""
+    const purpose =
+      typeof body.purpose === "string" ? body.purpose.trim() : "eligibility_question"
+    const id = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null
+    const opportunityId =
+      typeof body.opportunityId === "string" && body.opportunityId.trim()
+        ? body.opportunityId.trim()
+        : null
+    const attachments = Array.isArray(body.attachments)
+      ? body.attachments
+          .filter((entry: unknown) => entry && typeof entry === "object")
+          .map((entry: any) => ({
+            id: String(entry.id ?? ""),
+            label: String(entry.label ?? "").trim(),
+            done: Boolean(entry.done),
+          }))
+          .filter((entry) => entry.label.length > 0)
+      : []
+    const metadata =
+      body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? (body.metadata as Record<string, unknown>)
+        : {}
+
+    if (subject.length < 2 || draftBody.length < 2 || draftBody.length > 12000) {
+      sendJson(res, 400, { message: "Koncept nemá platný předmět nebo text." })
+      return
+    }
+
+    const uploaded = await uploadOfficialDraftToDrive({
+      recipient,
+      subject,
+      body: draftBody,
+      attachments,
+    })
+
+    if (!uploaded.ok) {
+      sendJson(res, uploaded.status || 502, {
+        message: uploaded.message || "Koncept se nepodařilo archivovat do Google Drive.",
+      })
+      return
+    }
+
+    const saved = await saveBackendOfficialDraft({
+      id,
+      opportunityId,
+      purpose,
+      recipient,
+      subject,
+      body: draftBody,
+      attachments,
+      reviewStatus: "ready_for_isds",
+      metadata: {
+        ...metadata,
+        archiveTarget: "google_drive",
+        archivedAt: new Date().toISOString(),
+        googleDriveFile: uploaded.data,
+      },
+    })
+
+    if (!saved.ok || !saved.data?.draft) {
+      sendJson(res, saved.status || 502, {
+        message: "Archiv byl vytvořen, ale metadata konceptu se nepodařilo uložit.",
+        driveFile: uploaded.data,
+      })
+      return
+    }
+
+    sendJson(res, 200, {
+      archived: true,
+      driveFile: uploaded.data,
       draft: mapOfficialDraft(saved.data.draft),
       drafts: Array.isArray(saved.data.drafts)
         ? saved.data.drafts.map(mapOfficialDraft)

@@ -12,6 +12,7 @@ import {
   FileText,
   GitPullRequest,
   Globe2,
+  HardDrive,
   History,
   KeyRound,
   ListChecks,
@@ -526,6 +527,7 @@ function PortalDashboard({
     () => overview.officialDrafts ?? [],
   )
   const [savingOfficialDraft, setSavingOfficialDraft] = useState(false)
+  const [archivingOfficialDraft, setArchivingOfficialDraft] = useState(false)
   const [officialMessage, setOfficialMessage] = useState("")
   const [officialDraftCopied, setOfficialDraftCopied] = useState(false)
   const [rollingBackVersionId, setRollingBackVersionId] = useState("")
@@ -1128,6 +1130,63 @@ function PortalDashboard({
         ? `Koncept je uložený pro datovou schránku. Zbývá ověřit přílohy: ${missingAttachments.length}.`
         : "Koncept je uložený jako připravený pro datovou schránku.",
     )
+  }
+
+  async function archiveOfficialDraftToDrive() {
+    if (!officialSubject.trim() || !officialDraft.trim()) {
+      setOfficialMessage("Před archivací doplňte věc a text konceptu.")
+      return
+    }
+
+    setArchivingOfficialDraft(true)
+    setOfficialMessage("")
+
+    try {
+      const response = await fetch("/api/admin/official-draft-archive", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: officialDraftId || null,
+          opportunityId: selectedOpportunity?.id ?? null,
+          purpose: officialPurpose,
+          recipient: officialRecipient,
+          subject: officialSubject,
+          body: officialDraft,
+          attachments: officialAttachments,
+          metadata: {
+            source: "portal_official_communication",
+            selectedOpportunityTitle: selectedOpportunity?.title ?? null,
+            channel: "isds",
+            dataBoxId: "v2328bu",
+            authorizationMethod: "bank_identity",
+          },
+        }),
+      })
+      const data = await readJson<{
+        draft?: OfficialDraftItem
+        drafts?: OfficialDraftItem[]
+        driveFile?: { name?: string; webViewLink?: string }
+        message?: string
+      }>(response)
+
+      if (!response.ok || !data.draft) {
+        setOfficialMessage(data.message ?? "Archivace do Google Drive se nepodařila.")
+        return
+      }
+
+      setOfficialDraftId(data.draft.id)
+      setOfficialDrafts(Array.isArray(data.drafts) ? data.drafts : [data.draft])
+      setOfficialMessage(
+        data.driveFile?.name
+          ? `Koncept je archivovaný v Google Drive: ${data.driveFile.name}`
+          : "Koncept je archivovaný v Google Drive.",
+      )
+    } catch {
+      setOfficialMessage("Google Drive archiv teď není dostupný. Zkuste to znovu.")
+    } finally {
+      setArchivingOfficialDraft(false)
+    }
   }
 
   async function copyOfficialDraft() {
@@ -2381,6 +2440,23 @@ function PortalDashboard({
                     <Send className="h-4 w-4" aria-hidden />
                   )}
                   Připravit DS
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void archiveOfficialDraftToDrive()}
+                  disabled={
+                    archivingOfficialDraft ||
+                    officialDraft.trim().length === 0 ||
+                    !storageIntegration?.configured
+                  }
+                >
+                  {archivingOfficialDraft ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <HardDrive className="h-4 w-4" aria-hidden />
+                  )}
+                  Archiv Drive
                 </Button>
                 <Button
                   type="button"
