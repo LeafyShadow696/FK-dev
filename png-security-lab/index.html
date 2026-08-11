@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091019">
-<meta name="description" content="Local PNG parser regression and binary inspection laboratory.">
+<meta name="description" content="Local PNG parser regression, binary inspection and safe PNG editing laboratory.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="assets/style.css">
 <title>PNG Security Lab</title>
@@ -18,9 +18,10 @@
 <aside class="sidebar">
   <button class="nav active" data-view="dashboard">Dashboard</button>
   <button class="nav" data-view="inspector">Binary inspector</button>
+  <button class="nav" data-view="editor">Binary editor</button>
   <button class="nav" data-view="corpusView">Test corpus</button>
   <button class="nav" data-view="about">About</button>
-  <div class="side-note"><b>Security boundary</b><br>Malformed inputs are analysed locally. No shellcode, exploit primitive or automatic execution is included.</div>
+  <div class="side-note"><b>Security boundary</b><br>Binary changes are performed locally and are explicitly exported by the user. No shellcode, exploit primitive or automatic execution is included.</div>
 </aside>
 <main>
 <section id="dashboardView" class="view active">
@@ -31,9 +32,22 @@
   <section class="panel"><div class="panelHead"><div><h2>Latest results</h2><small id="status">Loading WebAssembly…</small></div><div><button id="export" class="secondary">Export JSON</button><button id="clear" class="secondary">Clear</button></div></div>
   <div class="tableWrap"><table><thead><tr><th>File</th><th>Status</th><th>Dimensions</th><th>Parser code</th><th>Integrity</th><th>Time</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 </section>
-<section id="inspectorView" class="view"><div class="heading"><div><h1>Binary inspector</h1><p>Read-only inspection of PNG signature, chunks, lengths and CRC values. No file modification.</p></div></div><div class="panel"><div class="panelHead"><h2>Selected file</h2><span id="selectedName">None</span></div><div id="hex" class="hex">Select or drop a PNG to inspect it.</div></div><div class="panel"><div class="panelHead"><h2>Chunk map</h2><span id="chunkSummary">—</span></div><div class="tableWrap"><table><thead><tr><th>Offset</th><th>Chunk</th><th>Length</th><th>CRC</th><th>State</th></tr></thead><tbody id="chunks"></tbody></table></div></div></section>
+<section id="inspectorView" class="view">
+  <div class="heading"><div><h1>Binary inspector</h1><p>Hex-level, read-only inspection of the selected PNG.</p></div></div>
+  <div class="panel"><div class="panelHead"><h2>Selected file</h2><span id="selectedName">None</span></div><div id="hex" class="hex">Select or drop a PNG to inspect it.</div></div>
+  <div class="panel"><div class="panelHead"><h2>Chunk map</h2><span id="chunkSummary">—</span></div><div class="tableWrap"><table><thead><tr><th>Offset</th><th>Chunk</th><th>Length</th><th>CRC</th><th>State</th></tr></thead><tbody id="chunks"></tbody></table></div></div>
+</section>
+<section id="editorView" class="view">
+  <div class="heading"><div><h1>Binary editor</h1><p>Controlled PNG byte editing. Changes remain in memory until you explicitly export the resulting file.</p></div><div class="actions"><button id="resetEdit" class="secondary">Reset</button><button id="downloadPng" class="primary">Export PNG</button></div></div>
+  <div class="warning"><b>Safe editing boundary</b><br>Use this for parser fixtures, format research and regression testing. Exported files are ordinary PNG data; nothing is executed when they are opened.</div>
+  <div class="editorGrid">
+    <section class="panel"><div class="panelHead"><h2>Raw byte patch</h2><span>replace bytes in-place</span></div><div class="form"><label>Offset (hex)<input id="patchOffset" placeholder="10" inputmode="text"></label><label>Bytes (hex)<input id="patchBytes" placeholder="7F FF FF FF" inputmode="text"></label><button id="applyPatch" class="primary">Apply patch</button><small>Only existing bytes may be replaced; file size is never expanded by this control.</small></div></section>
+    <section class="panel"><div class="panelHead"><h2>IHDR editor</h2><span>structured binary edit</span></div><div class="form two"><label>Width<input id="ihdrWidth" type="number" min="0" max="4294967295"></label><label>Height<input id="ihdrHeight" type="number" min="0" max="4294967295"></label><label>Bit depth<input id="ihdrDepth" type="number" min="1" max="16" value="8"></label><label>Color type<input id="ihdrColor" type="number" min="0" max="6" value="2"></label></div><div class="presetRow"><button data-preset="max" class="secondary preset">Max-width boundary</button><button data-preset="overflow" class="secondary preset">Overflow candidate</button><button data-preset="normal" class="secondary preset">1×1 RGB</button></div><div class="editorActions"><button id="applyIHDR" class="primary">Apply IHDR + CRC</button><button id="repairCRC" class="secondary">Recalculate all CRCs</button></div></section>
+  </div>
+  <section class="panel"><div class="panelHead"><div><h2>Edited binary</h2><small id="editStatus">No edits.</small></div><span id="editHash">—</span></div><div id="editHex" class="hex">Select a PNG first.</div></section>
+</section>
 <section id="corpusViewView" class="view"><div class="heading"><div><h1>Test corpus</h1><p>Safe malformed and boundary fixtures carried with the application.</p></div></div><div id="corpusCards" class="cards"></div></section>
-<section id="aboutView" class="view"><div class="cards"><article><h2>Browser layer</h2><p>Portable regression and binary inspection layer. Files are processed client-side with WebAssembly.</p></article><article><h2>Native layer</h2><p>For memory-safety triage, the corresponding native C/C++ harness should be run separately under ASan/UBSan in an isolated environment.</p></article><article><h2>Workflow</h2><p>malformed PNG → parser validation → diagnostic code → native sanitizer triage → stack trace → fix → regression test.</p></article><article><h2>Safety</h2><p>This project intentionally does not contain shellcode, RCE payloads, memory-corruption primitives or auto-execution behavior.</p></article></div></section>
+<section id="aboutView" class="view"><div class="cards"><article><h2>Browser layer</h2><p>Portable regression, binary inspection and controlled binary editing. Files are processed client-side with WebAssembly and Web Crypto.</p></article><article><h2>Binary layer</h2><p>PNG signature, chunk lengths, IHDR fields and CRC-32 are visible at byte level. IHDR edits automatically rebuild the corresponding CRC.</p></article><article><h2>Native layer</h2><p>For memory-safety triage, the corresponding native C/C++ harness should be run separately under ASan/UBSan in an isolated environment.</p></article><article><h2>Workflow</h2><p>malformed PNG → binary inspection/edit → parser validation → diagnostic code → native sanitizer triage → stack trace → fix → regression test.</p></article><article><h2>Safety</h2><p>This project intentionally does not contain shellcode, RCE payloads, memory-corruption primitives or auto-execution behavior.</p></article></div></section>
 </main></div>
 <script type="module" src="assets/app.js"></script>
 </body></html>
