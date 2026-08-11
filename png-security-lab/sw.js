@@ -1,4 +1,4 @@
-const CACHE='png-security-lab-v2';
+const CACHE='png-security-lab-v3';
 const CORE=['./','./index.html','./manifest.webmanifest','./assets/app.js','./assets/style.css','./assets/icon.svg','./wasm/pnglab.wasm'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
