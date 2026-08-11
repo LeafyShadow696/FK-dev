@@ -2,23 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PNG Security Lab</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091019">
+<meta name="description" content="Local PNG parser regression and binary inspection laboratory.">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0b1016">
 <link rel="stylesheet" href="assets/style.css">
+<title>PNG Security Lab</title>
 </head>
 <body>
+<header class="topbar">
+  <div class="brand"><div class="mark">◆</div><div><strong>PNG SECURITY LAB</strong><small>Browser / PWA / WebAssembly</small></div></div>
+  <div class="badges"><span>LOCAL ONLY</span><span>WASM</span><span>SAFE LAB</span></div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+  <button class="nav active" data-view="dashboard">Dashboard</button>
+  <button class="nav" data-view="inspector">Binary inspector</button>
+  <button class="nav" data-view="corpusView">Test corpus</button>
+  <button class="nav" data-view="about">About</button>
+  <div class="side-note"><b>Security boundary</b><br>Malformed inputs are analysed locally. No shellcode, exploit primitive or automatic execution is included.</div>
+</aside>
 <main>
-  <h1>PNG Security Lab</h1>
-  <p>Browser → PWA → Drag &amp; Drop / Select PNG → WebAssembly → local results.</p>
-  <section id="drop">Drop PNG files here or <button id="pick">Select files</button></section>
-  <input id="files" hidden type="file" accept=".png,image/png" multiple>
-  <button id="run">Run built-in corpus</button>
-  <button id="install" hidden>Install PWA</button>
-  <p id="status">Loading WebAssembly…</p>
-  <pre id="results"></pre>
-</main>
+<section id="dashboardView" class="view active">
+  <div class="heading"><div><h1>PNG Parser Test Lab</h1><p>Browser → PWA → Drag &amp; Drop / Select PNG → bounded WASM validation → diagnostics.</p></div><div class="actions"><button id="install" class="secondary hidden">Install PWA</button><button id="run" class="primary">Run corpus</button></div></div>
+  <div id="drop" class="drop"><div class="drop-icon">↥</div><h2>Drop PNG files here</h2><p>or select files / a folder. Processing stays inside this browser.</p><div><button id="pick" class="primary">Select PNG</button><button id="pickFolder" class="secondary">Select folder</button></div><small id="dropStatus">8 built-in fixtures available.</small></div>
+  <input id="files" hidden type="file" accept=".png,image/png" multiple><input id="folder" hidden type="file" accept=".png,image/png" webkitdirectory directory multiple>
+  <div class="metrics"><div><b id="fileCount">0</b><span>Files</span></div><div><b id="accepted">0</b><span>Accepted</span></div><div><b id="rejected">0</b><span>Rejected</span></div><div><b id="errors">0</b><span>Runtime errors</span></div></div>
+  <section class="panel"><div class="panelHead"><div><h2>Latest results</h2><small id="status">Loading WebAssembly…</small></div><div><button id="export" class="secondary">Export JSON</button><button id="clear" class="secondary">Clear</button></div></div>
+  <div class="tableWrap"><table><thead><tr><th>File</th><th>Status</th><th>Dimensions</th><th>Parser code</th><th>Integrity</th><th>Time</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</section>
+<section id="inspectorView" class="view"><div class="heading"><div><h1>Binary inspector</h1><p>Read-only inspection of PNG signature, chunks, lengths and CRC values. No file modification.</p></div></div><div class="panel"><div class="panelHead"><h2>Selected file</h2><span id="selectedName">None</span></div><div id="hex" class="hex">Select or drop a PNG to inspect it.</div></div><div class="panel"><div class="panelHead"><h2>Chunk map</h2><span id="chunkSummary">—</span></div><div class="tableWrap"><table><thead><tr><th>Offset</th><th>Chunk</th><th>Length</th><th>CRC</th><th>State</th></tr></thead><tbody id="chunks"></tbody></table></div></div></section>
+<section id="corpusViewView" class="view"><div class="heading"><div><h1>Test corpus</h1><p>Safe malformed and boundary fixtures carried with the application.</p></div></div><div id="corpusCards" class="cards"></div></section>
+<section id="aboutView" class="view"><div class="cards"><article><h2>Browser layer</h2><p>Portable regression and binary inspection layer. Files are processed client-side with WebAssembly.</p></article><article><h2>Native layer</h2><p>For memory-safety triage, the corresponding native C/C++ harness should be run separately under ASan/UBSan in an isolated environment.</p></article><article><h2>Workflow</h2><p>malformed PNG → parser validation → diagnostic code → native sanitizer triage → stack trace → fix → regression test.</p></article><article><h2>Safety</h2><p>This project intentionally does not contain shellcode, RCE payloads, memory-corruption primitives or auto-execution behavior.</p></article></div></section>
+</main></div>
 <script type="module" src="assets/app.js"></script>
-</body>
-</html>
+</body></html>
